@@ -5,9 +5,10 @@ module Net
   module SSH
     module CLI
       include Net::SSH
-      class Error < StandardError; end
-      class Pty < Error; end
-      class RequestShell < Error; end
+      class Error < StandardError
+        class Pty < Error; end
+        class RequestShell < Error; end
+      end
 
       attr_accessor :options, :ssh, :ssh_options, :channel, :host, :ip, :user, :stdin, :stderr
 
