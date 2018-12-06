@@ -32,21 +32,25 @@ module Net
 
       def set_channel #cli_channel
         ssh.open_channel do |chn|
-          @channel = chn
+          self.channel = chn
           chn.request_pty do |ch,success|
             raise Error::Pty, "Failed to open ssh pty" unless success
           end
           chn.send_channel_request("shell") do |ch, success|
-            success ? @channel = ch : (raise Error::RequestShell.new("Failed to open ssh shell"))
+            raise Error::RequestShell.new("Failed to open ssh shell") unless success
           end
-          chn.on_data { |ch,data| stdin << data}
-          chn.on_extended_data { |ch,type,data| stderr << data if type == 1}
-          chn.on_close { @eof = true }
+          chn.on_data do |ch,data|
+            stdin << data
+          end
+          chn.on_extended_data do |ch,type,data|
+            stderr << data if type == 1
+          end
+          #chn.on_close { @eof = true }
         end
         ssh.process(0.1)
       end
 
-      def write(content = "")
+      def write(content = String.new)
         channel.send_data content
         ssh.process(0.1)
         content
@@ -64,6 +68,17 @@ module Net
           ssh.process(0.1)
         end
         read
+      end
+
+      def close
+        if ssh
+          ssh.cleanup_channel(channel)
+          ssh.close unless ssh.channels.any?
+        end
+      end
+  
+      def shutdown!
+        ssh.shutdown! if ssh
       end
     end
   end
