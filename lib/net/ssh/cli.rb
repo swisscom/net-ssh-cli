@@ -85,7 +85,7 @@ module Net
 
       def read_till_match(**options)
         raise UndefinedMatch.new("no match given") unless options[:match] || default_match
-        while !stdout[options[:match] || default_match]   #[/\w+@\w+:/]
+        while !stdout[options[:match] || default_match]
           process
         end
         read
