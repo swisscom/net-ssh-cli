@@ -14,10 +14,12 @@ module Net
 
       def initialize(host: , user: ENV["USER"], **opts)
         self.options = opts
-        self.host = host
+        self.ssh_options = options[:ssh] || {}
+        self.host = host || ip || ssh_options[:proxy]&.host
+        raise Error.new("host missing") unless host
         self.user = user
         self.ip = ip
-        self.ssh_options = options[:ssh] || {}
+        self.default_match = options[:default_match] if options[:default_match]
       end
 
       def ssh
