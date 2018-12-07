@@ -1,25 +1,22 @@
 require "net/ssh/cli/version"
 require 'net/ssh'
-require 'hooks'
 
 module Net
   module SSH
     module CLI
-      #include Net::SSH
-      include Hooks
-
       class Error < StandardError
         class Pty < Error; end
         class RequestShell < Error; end
-        class MatchMissing < Error; end
+        class UndefinedMatch < Error; end
       end
 
-      attr_accessor :options, :ssh, :ssh_options, :channel, :host, :ip, :user, :stdout, :stderr
+      attr_accessor :options, :ssh, :ssh_options, :channel, :host, :ip, :user, :stdout, :stderr, :default_match
 
-      def initialize(host, user, **opts)
+      def initialize(host: , user: ENV["USER"], **opts)
         self.options = opts
         self.host = host
         self.user = user
+        self.ip = ip
         self.ssh_options = options[:ssh] || {}
       end
 
@@ -43,7 +40,7 @@ module Net
         ssh.open_channel do |chn|
           self.channel = chn
           chn.request_pty do |ch,success|
-            raise Error::Pty, "Failed to open ssh pty" unless success
+            raise Error::Pty, "#{host || ip} Failed to open ssh pty" unless success
           end
           chn.send_channel_request("shell") do |ch, success|
             raise Error::RequestShell.new("Failed to open ssh shell") unless success
@@ -56,7 +53,7 @@ module Net
           end
           #chn.on_close { @eof = true }
         end
-        process(0.3)
+        process(0.01)
         channel
       end
 
@@ -86,40 +83,52 @@ module Net
         pre_buf
       end
 
-      def read_till_match(regex,**options)
-        while !stdout[/#{host}/]   #[/\w+@\w+:/]
+      def read_till_match(**options)
+        raise UndefinedMatch.new("no match given") unless options[:match] || default_match
+        while !stdout[options[:match] || default_match]   #[/\w+@\w+:/]
           process
         end
         read
       end
 
       def cmd(command, **options)
-        raise 
         read
         write command + "\n"
-        read_till_match(options[:match] || /#{host}/)
+        read_till_match(**options)
       end
 
-      def return(command, **options)
+      def dialog(command, match, **options)
         read
-        write command + "\n"
-        read
-      end 
-      alias :enter :return
+        write command
+        read_till_match(match)
+      end
 
-      def process(time = 0.1)
+      def process(time = 0.0001)
         ssh.process(time)
       rescue IOError => error
-        # closed stream
         raise Error.new(error.message)
       end
 
       def close
-        if ssh
-          ssh.cleanup_channel(channel)
-          self.channel = nil
-          ssh.close if ssh.channels.none?
-        end
+        return unless ssh
+        ssh.cleanup_channel(channel)
+        self.channel = nil
+        # ssh.close if ssh.channels.none? # should the connection be closed if the last channel gets closed?
+      end
+
+      def connect
+        setup_channel unless channel
+      end
+
+      def reconnect
+        disconnect
+        connect
+      end
+
+      def disconnect
+        close
+        ssh.close if ssh
+        self.ssh = nil
       end
   
       def shutdown!
@@ -129,6 +138,6 @@ module Net
   end
 end
 
-class Net::CLI
+class Net::SSH::CLI::Host
   include Net::SSH::CLI
 end
