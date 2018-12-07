@@ -97,6 +97,10 @@ module Net
         read_till_match(**options)
       end
 
+      def cmds(commands, **options)
+        commands.map {|command| [command, cmd(command, **options)]}.to_h
+      end
+
       def dialog(command, match, **options)
         read
         write command
