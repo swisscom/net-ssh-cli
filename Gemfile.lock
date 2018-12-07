@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     net-ssh-cli (0.1.0)
-      net-ssh (>= 4.0)
+      net-ssh (>= 5.0)
 
 GEM
   remote: https://rubygems.org/
