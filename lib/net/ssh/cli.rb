@@ -1,5 +1,6 @@
 require "net/ssh/cli/version"
 require 'net/ssh'
+require "active_support/core_ext/hash/indifferent_access"
 
 module Net
   module SSH
@@ -9,15 +10,19 @@ module Net
         class RequestShell < Error; end
         class UndefinedMatch < Error; end
       end
+      class Match
+        attr_accessor :regex, :name
+      end
 
       attr_accessor :options, :ssh, :ssh_options, :channel, :host, :ip, :user, :stdout, :stderr, :default_match
 
-      def initialize(host: , user: ENV["USER"], **opts)
+      def initialize(**opts)
+        opts = ActiveSupport::HashWithIndifferentAccess.new(**opts)
         self.options = opts
-        self.ssh_options = options[:ssh] || {}
-        self.host = host || ip || ssh_options[:net_ssh]&.host
+        self.ssh_options = options[:ssh_options] || {}
+        self.host = options[:host] || ip || options[:net_ssh]&.host
         raise Error.new("host missing") unless host
-        self.user = user
+        self.user = user || options[:user] || ssh_options[:user] || ENV["USER"] 
         self.ip = ip
         self.default_match = options[:default_match] if options[:default_match]
       end
@@ -167,7 +172,7 @@ class Net::SSH::CLI::Channel
   include Net::SSH::CLI
 end
 
-class Net::SSH
+module Net::SSH
   def open_cli_channel
     NET::SSH::CLI.new(net_ssh: self)
   end
