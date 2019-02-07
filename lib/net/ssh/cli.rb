@@ -11,7 +11,7 @@ module Net
         class UndefinedMatch < Error; end
       end
       class Match
-        attr_accessor :regex, :name
+        attr_accessor :regex, :name, :remove_match, :remove_cmd 
       end
 
       attr_accessor :options, :ssh, :ssh_options, :channel, :host, :ip, :user, :stdout, :stderr, :default_match
@@ -95,6 +95,18 @@ module Net
 
       def read_clean(cmd: , match: )
         # todo cleanup the cmd and prompt from the output
+      end
+
+      attr_accessor :named_match
+      def named_match
+        @named_matches ||= ActiveSupport::HashWithIndifferentAccess.new
+      end
+
+      def with_named_match(name, &blk)
+        raise Error::UndefinedMatch.new("unknown named_match #{name}") unless named_match[name]
+        with_default_match(named_match[name]) do
+          yield
+        end
       end
 
       # prove a block where the default match changes 
