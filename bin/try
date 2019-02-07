@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+
+require "bundler/setup"
+require "net/ssh/cli"
+
+# You can add fixtures and/or initialization code here to make experimenting
+# with your gem easier. You can also use a different console, if you like.
+
+# (If you use this, don't forget to add pry to your Gemfile!)
+# require "pry"
+# Pry.start
+
+require "irb"
+
+def reload!
+  load __FILE__
+end
+
+begin
+  $cli = Net::SSH::CLI::Channel.new(host: "localhost", user: ENV["USER"], default_match: ENV["USER"])
+  $cli.setup_channel
+  puts "\nPUTS #{$cli.read}"
+  puts "\nPUTS #{$cli.read}"
+  sleep 0.3
+  puts "\nPUTS #{$cli.read}"
+  puts "\nPUTS #{$cli.write "\n"}"
+  puts "\nPUTS TILL #{$cli.read_till}"
+  $cli.close
+rescue => error
+  puts error.class
+  puts error.message
+  puts error.backtrace
+ensure
+  IRB.start(__FILE__)
+end
