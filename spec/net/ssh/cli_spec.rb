@@ -4,7 +4,7 @@ RSpec.describe Net::SSH::CLI do
   end
 
   context "#cmd" do
-    let(:cli) {Net::SSH::CLI::Host.new(host: "localhost", default_match: "ok")}
+    let(:cli) {Net::SSH::CLI::Channel.new(host: "localhost", default_match: "@")}
     it "#cmd" do
       allow(cli).to receive(:read).and_return "ok"
       allow(cli).to receive(:write).and_return "ok"

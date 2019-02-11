@@ -17,15 +17,15 @@ def reload!
 end
 
 begin
-  $cli = Net::SSH::CLI::Channel.new(host: "localhost", user: ENV["USER"], default_match: ENV["USER"])
-  $cli.setup_channel
+  $cli = Net::SSH::CLI::Channel.new(host: "localhost", user: ENV["USER"], default_match: "@")
+  $cli.open_channel
   puts "\nPUTS #{$cli.read}"
   puts "\nPUTS #{$cli.read}"
   sleep 0.3
   puts "\nPUTS #{$cli.read}"
   puts "\nPUTS #{$cli.write "\n"}"
   puts "\nPUTS TILL #{$cli.read_till}"
-  $cli.close
+  #$cli.close
 rescue => error
   puts error.class
   puts error.message
