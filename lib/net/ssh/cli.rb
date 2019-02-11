@@ -16,7 +16,8 @@ module Net
 
       attr_accessor :options, :channel, :stdout, :stderr
       attr_accessor :host, :ip, :user
-      attr_accessor :default_match, :process_stdout_procs, :process_stderr_procs
+      attr_accessor :default_prompt, :named_promptes
+      attr_accessor :process_stdout_procs, :process_stderr_procs
       attr_accessor :net_ssh, :net_ssh_options, :process_time
       attr_accessor :net_ssh_timeout, :channel_setup_timeout, :read_till_timeout
 
@@ -30,7 +31,7 @@ module Net
         self.user = user || options[:user] || net_ssh_options[:user] || ENV["USER"] 
         self.ip = ip
 
-        self.default_match = options[:default_match] if options[:default_match]
+        self.default_prompt = options[:default_prompt] if options[:default_prompt]
 
         self.process_stdout_procs = options[:process_stdout_procs] || {}
         self.process_stderr_procs = options[:process_stderr_procs] || {}
@@ -113,6 +114,7 @@ module Net
         process_stdout_procs.each do |regex, the_proc|
           the_proc.call if stdout[regex]
         end
+        stdout
       end
     
       def process_stderr(data, type)
@@ -120,6 +122,7 @@ module Net
         process_stderr_procs.each do |regex, the_proc|
           the_proc.call if stderr[regex]
         end
+        stderr
       end
 
 
@@ -138,40 +141,39 @@ module Net
         pre_buf
       end
 
-      ## fancy match|prompt handling methods
+      ## fancy prompt|prompt handling methods
       #
 
-      def current_match
-        @with_match[-1] ? @with_match[-1] : default_match
+      def current_prompt
+        @with_prompt[-1] ? @with_prompt[-1] : default_prompt
       end
 
-      attr_accessor :named_match
-      def named_match
-        @named_matches ||= ActiveSupport::HashWithIndifferentAccess.new
+      def named_promptes
+        @named_promptes ||= ActiveSupport::HashWithIndifferentAccess.new
       end
 
-      def with_named_match(name, &blk)
-        raise Error::UndefinedMatch.new("unknown named_match #{name}") unless named_match[name]
-        with_default_match(named_match[name]) do
+      def with_named_prompt(name, &blk)
+        raise Error::UndefinedMatch.new("unknown named_prompt #{name}") unless named_promptes[name]
+        with_default_prompt(named_promptes[name]) do
           yield
         end
       end
 
-      # prove a block where the default match changes 
-      def with_default_match(match, &blk)
-        @with_default_match ||= []
-        @with_default_match << match
-        self.default_match = match
+      # prove a block where the default prompt changes 
+      def with_default_prompt(prompt, &blk)
+        @with_default_prompt ||= []
+        @with_default_prompt << prompt
+        self.default_prompt = prompt
         yield
       ensure
-        self.default_match = @with_default_match.delete_at(-1)
+        self.default_prompt = @with_default_prompt.delete_at(-1)
       end
 
-      def read_till(match: default_match, **options)
-        raise Error::UndefinedMatch.new("no match given or default_match defined") unless match
-        ::Timeout.timeout(read_till_timeout, Error::ReadTillTimeout.new("output did not match #{match.inspect} within #{read_till_timeout}")) do
-          with_default_match(match) do
-            while !stdout[default_match]
+      def read_till(prompt: default_prompt, **options)
+        raise Error::UndefinedMatch.new("no prompt given or default_prompt defined") unless prompt
+        ::Timeout.timeout(read_till_timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{read_till_timeout}")) do
+          with_default_prompt(prompt) do
+            while !stdout[default_prompt]
               sleep 0.1
               process
             end
@@ -188,7 +190,7 @@ module Net
         write command + "\n"
         value = read_till(**options)
         value[command] = "" if value[command] if options[:delete_cmd]
-        value[options[:match] || default_match] = "" if value[options[:match] || default_match] if options[:delete_prompt]
+        value[options[:prompt] || default_prompt] = "" if value[options[:prompt] || default_prompt] if options[:delete_prompt]
         value
       end
 
@@ -196,10 +198,10 @@ module Net
         commands.map {|command| [command, cmd(command, **options)]}.to_h
       end
 
-      def dialog(command, match, **options)
+      def dialog(command, prompt, **options)
         read
         write command
-        read_till(match: match, **options)
+        read_till(prompt: prompt, **options)
       end
   
       ## NET::SSH
@@ -227,6 +229,8 @@ module Net
         connect
       end
 
+      # feels wrong
+
       def disconnect
         close
         net_ssh.close if net_ssh
@@ -249,7 +253,7 @@ class Net::SSH::CLI::Channel
 end
 
 module Net::SSH
-  def request_cli_channel
+  def open_cli_channel
     NET::SSH::CLI.new(net_ssh: self)
   end
 end

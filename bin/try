@@ -17,7 +17,7 @@ def reload!
 end
 
 begin
-  $cli = Net::SSH::CLI::Channel.new(host: "localhost", user: ENV["USER"], default_match: "@")
+  $cli = Net::SSH::CLI::Channel.new(host: "localhost", user: ENV["USER"], default_prompt: "@")
   $cli.open_channel
   puts "\nPUTS #{$cli.read}"
   puts "\nPUTS #{$cli.read}"
