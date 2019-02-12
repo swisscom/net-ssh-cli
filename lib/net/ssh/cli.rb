@@ -132,7 +132,10 @@ module Net
         process
         content
       end
-      alias :print :write
+
+      def write_n(content = String.new)
+        write content + "\n"
+      end
 
       def read
         process
@@ -171,10 +174,10 @@ module Net
 
       def read_till(prompt: default_prompt, **options)
         raise Error::UndefinedMatch.new("no prompt given or default_prompt defined") unless prompt
-        ::Timeout.timeout(read_till_timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{read_till_timeout}")) do
+        timeout = options[:timeout] || read_till_timeout
+        ::Timeout.timeout(timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{timeout}")) do
           with_default_prompt(prompt) do
             while !stdout[default_prompt]
-              sleep 0.1
               process
             end
           end
@@ -185,11 +188,13 @@ module Net
       ensure
       end
 
+      # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly. 
+      # this should avoid many horrible state issues where the prompt is not the last prompt
       def cmd(command, **options)
         read
-        write command + "\n"
+        write_n command
         value = read_till(**options)
-        value[command] = "" if value[command] if options[:delete_cmd]
+        value[command + "\n"] = "" if value[command + "\n"] if options[:delete_cmd]
         value[options[:prompt] || default_prompt] = "" if value[options[:prompt] || default_prompt] if options[:delete_prompt]
         value
       end
