@@ -43,7 +43,7 @@ RSpec.describe Net::SSH::CLI do
     end
 
     context "fancy prompt parsing" do
-      before {allow(cli).to receive(:read).once {"@"}}
+      before {allow(cli).to receive(:read) {"@"}}
       context "#read_till" do
         it "reads till the prompt matches" do
           cli.stdout = "@"
@@ -62,22 +62,21 @@ RSpec.describe Net::SSH::CLI do
         end
         
         it "deletes the cmd" do
-          expect(cli.cmd "bananas", delete_cmd: true).to eq("oranges\n@")
+          expect(cli.cmd "bananas", rm_cmd: true).to eq("oranges\n@")
         end
-        it "deletes the prompt" do
-          expect(cli.cmd "bananas", delete_prompt: true).to eq("bananas\noranges\n")
+        context "deletes the prompt" do
+          it "with a string prompt" do
+            expect(cli.cmd "bananas", rm_prompt: true).to eq("bananas\noranges\n")
+          end
+          it "with a regexp prompt" do
+            allow(cli).to receive(:read) {/(@)/}
+            expect(cli.cmd "bananas", rm_prompt: true).to eq("bananas\noranges\n")
+          end
         end
         it "deletes the cmd and the prompt" do
-          expect(cli.cmd "bananas", delete_cmd: true, delete_prompt: true).to eq("oranges\n")
+          expect(cli.cmd "bananas", rm_cmd: true, rm_prompt: true).to eq("oranges\n")
         end
       end
-    end
-
-    context "#cmd" do
-      #it "#cmd" do
-      #  cli.stdout = "@\nasdf"
-      #  expect(cli.cmd "").to match(/ok/)
-      #end
     end
   end
 end

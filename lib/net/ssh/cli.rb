@@ -21,6 +21,7 @@ module Net
       attr_accessor :net_ssh, :net_ssh_options, :process_time
       attr_accessor :net_ssh_timeout, :channel_setup_timeout, :read_till_timeout
 
+
       def initialize(**opts)
         self.options = ActiveSupport::HashWithIndifferentAccess.new(opts)
 
@@ -41,6 +42,13 @@ module Net
         self.read_till_timeout     = options[:read_till_timeout]      
 
         self.process_time = 0.00001
+      end
+
+      def configuration
+        {
+          rm_cmd: rm_cmd,
+          rm_prompt: rm_prompt
+        }
       end
 
       def net_ssh
@@ -193,10 +201,10 @@ module Net
       def cmd(command, **options)
         read
         write_n command
-        value = read_till(**options)
-        value[command + "\n"] = "" if value[command + "\n"] if options[:delete_cmd]
-        value[options[:prompt] || default_prompt] = "" if value[options[:prompt] || default_prompt] if options[:delete_prompt]
-        value
+        output = read_till(**options)
+        rm_cmd(output, command, **options)
+        rm_prompt(output, **options)
+        output
       end
 
       def cmds(commands, **options)
@@ -208,6 +216,29 @@ module Net
         write command
         read_till(prompt: prompt, **options)
       end
+
+
+      attr_writer :rm_cmd
+      def rm_cmd?(**options)
+        options[:rm_cmd] != nil ? options[:rm_cmd] : @rm_cmd
+      end
+      def rm_cmd(output, command, **options)
+        output[command + "\n"] = "" if output[command + "\n"] if rm_cmd?(options)
+      end
+
+      attr_writer :rm_prompt
+      def rm_prompt?(**options)
+        options[:rm_prompt] != nil ? options[:rm_prompt] : @rm_prompt
+      end
+      def rm_prompt(output, **options)
+        if rm_prompt?(options)
+          prompt = options[:prompt] || default_prompt
+          if output[prompt]
+            prompt.is_a?(Regexp) ? output[prompt,1] = "" :  output[prompt] = ""
+          end
+        end
+      end
+
   
       ## NET::SSH
       #
@@ -245,6 +276,8 @@ module Net
       def shutdown!
         net_ssh.shutdown! if net_ssh
       end
+
+      private
     end
   end
 end
