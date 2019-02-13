@@ -14,49 +14,58 @@ module Net
         class ReadTillTimeout < Error; end
       end
 
-      attr_accessor :options, :channel, :stdout, :stderr
-      attr_accessor :host, :ip, :user
-      attr_accessor :default_prompt, :named_promptes
-      attr_accessor :process_stdout_procs, :process_stderr_procs
-      attr_accessor :net_ssh, :net_ssh_options, :process_time
-      attr_accessor :net_ssh_timeout, :channel_setup_timeout, :read_till_timeout
-
-
       def initialize(**opts)
-        self.options = ActiveSupport::HashWithIndifferentAccess.new(opts)
-
-        self.net_ssh = options[:net_ssh] if options[:net_ssh]
-        self.net_ssh_options = options[:net_ssh_options] || {}
-        self.host = options[:host] || ip || options[:net_ssh]&.host
-
-        self.user = user || options[:user] || net_ssh_options[:user] || ENV["USER"] 
-        self.ip = ip
-
-        self.default_prompt = options[:default_prompt] if options[:default_prompt]
-
-        self.process_stdout_procs = options[:process_stdout_procs] || {}
-        self.process_stderr_procs = options[:process_stderr_procs] || {}
-
-        self.net_ssh_timeout       = options[:net_ssh_timeout] || net_ssh_options[:timeout] 
-        self.channel_setup_timeout = options[:channel_setup_timeout]   
-        self.read_till_timeout     = options[:read_till_timeout]      
-
-        self.process_time = 0.00001
+        self.options.merge!(opts)
+        self.net_ssh = options.delete(:net_ssh)
       end
 
-      def configuration
-        {
-          rm_cmd: rm_cmd,
-          rm_prompt: rm_prompt
-        }
+      attr_accessor :channel, :stdout, :stderr, :net_ssh
+
+      ## make everthing configurable!
+
+      def default(**defaults)
+        @default ||= ActiveSupport::HashWithIndifferentAccess.new(
+          default_prompt: /\\n/,
+          process_time: 0.00001,
+          open_channel_timeout: nil,
+          read_till_timeout: nil,
+        ).merge!(**defaults)
       end
+
+      # don't even think about nesting hashes here
+      def options(**options)
+        @options ||= default
+      end
+
+      # don't even think about nesting hashes here
+      def options=(opts)
+        @options = ActiveSupport::HashWithIndifferentAccess.new(opts)
+      end
+
+      [:default_prompt, :process_time, :open_channel_timeout, :read_till_timeout].each do |name|
+        define_method name do
+          options[name]
+        end
+        define_method "#{name}=" do |value|
+          options[name] = value
+        end
+      end
+
+      [:process_stdout_procs, :process_stderr_procs, :named_prompts, :net_ssh_options].each do |name|
+        define_method name do
+          options[name] ||= ActiveSupport::HashWithIndifferentAccess.new
+        end
+        define_method "#{name}=" do |value|
+          options[name] = ActiveSupport::HashWithIndifferentAccess.new(value)
+        end
+      end
+
+      ## Net::SSH instance
+      #
 
       def net_ssh
         return @net_ssh if @net_ssh
-        ::Timeout.timeout(net_ssh_timeout, ::Net::SSH::Timeout) do
-          self.net_ssh = Net::SSH.start(ip || host, user, self.net_ssh_options)
-        end
-        @net_ssh
+        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV["USER"], self.net_ssh_options)
       rescue => error
         self.net_ssh = nil
         raise
@@ -87,7 +96,7 @@ module Net
       end
 
       def open_channel #cli_channel
-        ::Timeout.timeout(channel_setup_timeout, Error::ChannelSetupTimeout) do
+        ::Timeout.timeout(open_channel_timeout, Error::ChannelSetupTimeout) do
           net_ssh.open_channel do |channel_|
             self.channel = channel_
             channel_.request_pty do |ch,success|
@@ -156,35 +165,31 @@ module Net
       #
 
       def current_prompt
-        @with_prompt[-1] ? @with_prompt[-1] : default_prompt
-      end
-
-      def named_promptes
-        @named_promptes ||= ActiveSupport::HashWithIndifferentAccess.new
+        @with_prompt ? (@with_prompt[-1] ? @with_prompt[-1] : default_prompt) : default_prompt
       end
 
       def with_named_prompt(name, &blk)
-        raise Error::UndefinedMatch.new("unknown named_prompt #{name}") unless named_promptes[name]
-        with_default_prompt(named_promptes[name]) do
+        raise Error::UndefinedMatch.new("unknown named_prompt #{name}") unless named_prompts[name]
+        with_prompt(named_prompts[name]) do
           yield
         end
       end
 
       # prove a block where the default prompt changes 
-      def with_default_prompt(prompt, &blk)
-        @with_default_prompt ||= []
-        @with_default_prompt << prompt
+      def with_prompt(prompt, &blk)
+        @with_prompt ||= []
+        @with_prompt << prompt
         self.default_prompt = prompt
         yield
       ensure
-        self.default_prompt = @with_default_prompt.delete_at(-1)
+        self.default_prompt = @with_prompt.delete_at(-1)
       end
 
-      def read_till(prompt: default_prompt, **options)
+      def read_till(prompt: current_prompt, **options)
         raise Error::UndefinedMatch.new("no prompt given or default_prompt defined") unless prompt
         timeout = options[:timeout] || read_till_timeout
         ::Timeout.timeout(timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{timeout}")) do
-          with_default_prompt(prompt) do
+          with_prompt(prompt) do
             while !stdout[default_prompt]
               process
             end
@@ -194,6 +199,19 @@ module Net
       rescue => error
         raise
       ensure
+      end
+
+      def read_for(seconds: , **options)
+        process
+        sleep seconds
+        process
+        read
+      end
+
+      def dialog(command, prompt, **options)
+        read
+        write command
+        read_till(prompt: prompt, **options)
       end
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly. 
@@ -210,13 +228,6 @@ module Net
       def cmds(commands, **options)
         commands.map {|command| [command, cmd(command, **options)]}.to_h
       end
-
-      def dialog(command, prompt, **options)
-        read
-        write command
-        read_till(prompt: prompt, **options)
-      end
-
 
       attr_writer :rm_cmd
       def rm_cmd?(**options)
