@@ -329,7 +329,7 @@ class Net::SSH::CLI::Channel
   include Net::SSH::CLI
   def initialize(**options)
     super
-    open_channel
+    #open_channel
   end
 end
 

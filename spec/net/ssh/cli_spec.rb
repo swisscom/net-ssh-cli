@@ -7,15 +7,13 @@ RSpec.describe Net::SSH::CLI do
 
   describe "fake Socket" do
     let(:default_prompt) {"@"}
-    let(:cli) {Net::SSH::CLI::Channel.new(default_prompt: default_prompt)}
-    let(:channel) {OpenStruct.new}
-    before {allow(cli).to receive(:process) {|args| true}}
-    before {allow(cli).to receive(:process) {true}}
-    before {allow(cli).to receive(:net_ssh) {true}}
-    before {allow(cli).to receive(:open_channel) {true}}
-    before {allow(cli).to receive(:channel) {channel}}
-    before {allow(cli).to receive(:write)   {|args| cli.process_stdout(args.to_s)}}
-    before {allow(channel).to receive(:send_data) {|args| cli.process_stdout(args.to_s)}}
+    let(:channel) {double(Net::SSH::Connection::Channel)}
+    let(:net_ssh) {double(Net::SSH)}
+    let(:cli) {Net::SSH::CLI::Channel.new(default_prompt: default_prompt,net_ssh: net_ssh)}
+    before(:each) {allow(cli).to receive(:open_channel) {}}
+    before(:each) {allow(cli).to receive(:channel) {channel}}
+    before(:each) {allow(cli).to receive(:process) {true}}
+    before(:each) {allow(channel).to receive(:send_data) {true}}
 
     context "low level" do
       context "#read" do
