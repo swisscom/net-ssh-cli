@@ -282,7 +282,6 @@ module Net
         end
       end
 
-  
       ## NET::SSH
       #
 
