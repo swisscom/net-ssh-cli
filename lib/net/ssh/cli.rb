@@ -1,7 +1,9 @@
 require "net/ssh/cli/version"
 require 'net/ssh'
 require "active_support/core_ext/hash/indifferent_access"
+require 'active_support/core_ext/object/blank'
 require 'timeout'
+require 'logger'
 
 module Net
   module SSH
@@ -10,31 +12,46 @@ module Net
         class Pty < Error; end
         class RequestShell < Error; end
         class UndefinedMatch < Error; end
-        class ChannelSetupTimeout < Error; end
+        class OpenChannelTimeout < Error; end
         class ReadTillTimeout < Error; end
       end
 
       def initialize(**opts)
         self.options.merge!(opts)
         self.net_ssh = options.delete(:net_ssh)
+        self.logger = options.delete(:logger) || Logger.new(STDOUT, level: Logger::WARN)
       end
 
-      attr_accessor :channel, :stdout, :stderr, :net_ssh
+      attr_accessor :channel, :stdout, :stderr, :net_ssh, :logger
 
       ## make everthing configurable!
+      #
+
+      DEFAULT = ActiveSupport::HashWithIndifferentAccess.new(
+        default_prompt: /^(\S+@\S+\s*)/,
+        process_time: 0.00001,
+        read_till_timeout: nil,
+        read_till_rm_prompt:  false,
+        cmd_rm_prompt:  false,
+        cmd_rm_command: false, 
+      )
 
       def default(**defaults)
-        @default ||= ActiveSupport::HashWithIndifferentAccess.new(
-          default_prompt: /\\n/,
-          process_time: 0.00001,
-          open_channel_timeout: nil,
-          read_till_timeout: nil,
-        ).merge!(**defaults)
+        (@default ||= DEFAULT.clone).merge(**defaults)
+      end
+
+      def default!(**defaults)
+        default.merge!(**defaults)
       end
 
       # don't even think about nesting hashes here
-      def options(**options)
+      def options(**opts)
         @options ||= default
+      end
+
+      # don't even think about nesting hashes here
+      def options!(**opts)
+        options.merge!(opts)
       end
 
       # don't even think about nesting hashes here
@@ -42,7 +59,7 @@ module Net
         @options = ActiveSupport::HashWithIndifferentAccess.new(opts)
       end
 
-      [:default_prompt, :process_time, :open_channel_timeout, :read_till_timeout].each do |name|
+      [:default_prompt, :process_time, :read_till_timeout, :cmd_rm_command, :cmd_rm_prompt, :read_till_rm_prompt].each do |name|
         define_method name do
           options[name]
         end
@@ -51,9 +68,12 @@ module Net
         end
       end
 
-      [:process_stdout_procs, :process_stderr_procs, :named_prompts, :net_ssh_options].each do |name|
+      [:process_stdout_procs, :process_stderr_procs, :named_prompts, :net_ssh_options, :open_channel_options].each do |name|
         define_method name do
           options[name] ||= ActiveSupport::HashWithIndifferentAccess.new
+        end
+        define_method "#{name}!" do |**opts|
+          send(name).merge!(**opts)
         end
         define_method "#{name}=" do |value|
           options[name] = ActiveSupport::HashWithIndifferentAccess.new(value)
@@ -65,12 +85,14 @@ module Net
 
       def net_ssh
         return @net_ssh if @net_ssh
+        logger.debug {"Net:SSH #start"}
         self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV["USER"], self.net_ssh_options)
       rescue => error
         self.net_ssh = nil
         raise
       ensure
       end
+      alias :proxy :net_ssh
 
       ## channel & stderr|stdout stream handling
       #
@@ -96,8 +118,9 @@ module Net
       end
 
       def open_channel #cli_channel
-        ::Timeout.timeout(open_channel_timeout, Error::ChannelSetupTimeout) do
+        ::Timeout.timeout(open_channel_options[:timeout], Error::OpenChannelTimeout) do
           net_ssh.open_channel do |channel_|
+            logger.debug "channel is open"
             self.channel = channel_
             channel_.request_pty do |ch,success|
               raise Error::Pty, "#{host || ip} Failed to open ssh pty" unless success
@@ -115,11 +138,12 @@ module Net
               close
             end
           end
-          while !channel
-            process
-          end
-          process
+          until channel do process end
         end
+        logger.debug "channel is ready, running callbacks now"
+        read_till if open_channel_options[:after_read_till_prompt]
+        open_channel_options[:after_proc]&.call
+        process
       rescue => error
         close
         raise
@@ -128,23 +152,20 @@ module Net
 
       def process_stdout(data)
         stdout << data
-        process_stdout_procs.each do |regex, the_proc|
-          the_proc.call if stdout[regex]
-        end
+        process_stdout_procs.each {|name, a_proc| a_proc.call}
         stdout
       end
     
       def process_stderr(data, type)
         stderr << data
-        process_stderr_procs.each do |regex, the_proc|
-          the_proc.call if stderr[regex]
-        end
+        process_stderr_procs.each {|name, a_proc| a_proc.call}
         stderr
       end
 
 
       def write(content = String.new)
         raise Error.new("channel is not stablished or gone") unless channel
+        logger.debug {"#write #{content.inspect}"}
         channel.send_data content
         process
         content
@@ -154,10 +175,12 @@ module Net
         write content + "\n"
       end
 
+      # returns the stdout buffer and empties it
       def read
         process
         pre_buf = stdout
         self.stdout = String.new
+        logger.debug("#read: \n#{pre_buf}")
         pre_buf
       end
 
@@ -177,12 +200,14 @@ module Net
 
       # prove a block where the default prompt changes 
       def with_prompt(prompt, &blk)
+        logger.debug {"#with_prompt: #{current_prompt.inspect} => #{prompt.inspect}"} 
         @with_prompt ||= []
         @with_prompt << prompt
         self.default_prompt = prompt
         yield
       ensure
         self.default_prompt = @with_prompt.delete_at(-1)
+        logger.debug {"#with_prompt: => #{current_prompt.inspect}"} 
       end
 
       def read_till(prompt: current_prompt, **options)
@@ -209,41 +234,46 @@ module Net
       end
 
       def dialog(command, prompt, **options)
-        read
+        pre_read = read
+        logger.debug {"#dialog ignores the following pre-output #{pre_read.inspect}"} if pre_read.present?
         write command
         output = read_till(prompt: prompt, **options)
-        rm_cmd(output, command, **options)
+        rm_prompt!(output, prompt: prompt, **options)
+        rm_command!(output, command, prompt: prompt, **options)
         output
       end
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly. 
       # this should avoid many horrible state issues where the prompt is not the last prompt
       def cmd(command, **options)
-        read
+        pre_read = read
+        logger.debug {"#cmd ignoring pre-read: #{pre_read.inspect}"} if pre_read.present?
         write_n command
         output = read_till(**options)
-        rm_cmd(output, command, **options)
-        rm_prompt(output, **options)
+        rm_prompt!(output, **options)
+        rm_command!(output, command, **options)
         output
       end
+      alias :command :cmd
 
       def cmds(commands, **options)
         commands.map {|command| [command, cmd(command, **options)]}.to_h
       end
+      alias :commands :cmds
 
-      attr_writer :rm_cmd
-      def rm_cmd?(**options)
-        options[:rm_cmd] != nil ? options[:rm_cmd] : @rm_cmd
-      end
-      def rm_cmd(output, command, **options)
-        output[command + "\n"] = "" if output[command + "\n"] if rm_cmd?(options)
+      def rm_command?(**opts)
+        opts[:rm_cmd] != nil ? opts[:rm_cmd] : cmd_rm_command
       end
 
-      attr_writer :rm_prompt
-      def rm_prompt?(**options)
-        options[:rm_prompt] != nil ? options[:rm_prompt] : @rm_prompt
+      def rm_command!(output, command, **options)
+        output[command + "\n"] = "" if output[command + "\n"] if rm_command?(options)
       end
-      def rm_prompt(output, **options)
+
+      def rm_prompt?(**opts)
+        opts[:rm_prompt] != nil ? opts[:rm_prompt] : cmd_rm_prompt
+      end
+
+      def rm_prompt!(output, **options)
         if rm_prompt?(options)
           prompt = options[:prompt] || default_prompt
           if output[prompt]

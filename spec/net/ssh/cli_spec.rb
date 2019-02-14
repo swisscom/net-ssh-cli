@@ -1,4 +1,5 @@
 require 'ostruct'
+
 RSpec.describe Net::SSH::CLI do
   it "has a version number" do
     expect(Net::SSH::CLI::VERSION).not_to be nil
@@ -13,8 +14,8 @@ RSpec.describe Net::SSH::CLI do
     before {allow(cli).to receive(:net_ssh) {true}}
     before {allow(cli).to receive(:open_channel) {true}}
     before {allow(cli).to receive(:channel) {channel}}
-    before {allow(cli).to receive(:write)   {|args| cli.process_stdout(args)}}
-    before {allow(channel).to receive(:send_data) {|args| cli.process_stdout(args)}}
+    before {allow(cli).to receive(:write)   {|args| cli.process_stdout(args.to_s)}}
+    before {allow(channel).to receive(:send_data) {|args| cli.process_stdout(args.to_s)}}
 
     context "low level" do
       context "#read" do
