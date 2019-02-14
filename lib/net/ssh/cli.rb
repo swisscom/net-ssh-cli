@@ -211,7 +211,9 @@ module Net
       def dialog(command, prompt, **options)
         read
         write command
-        read_till(prompt: prompt, **options)
+        output = read_till(prompt: prompt, **options)
+        rm_cmd(output, command, **options)
+        output
       end
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly. 
@@ -303,6 +305,6 @@ end
 
 module Net::SSH
   def open_cli_channel
-    NET::SSH::CLI.new(net_ssh: self)
+    NET::SSH::CLI::Channel.new(net_ssh: self)
   end
 end
