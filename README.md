@@ -1,6 +1,6 @@
 # Net::SSH::CLI
 
-Adds another layer on top of NET::SSH for a proper handling of CLI sessions which last longer than one command. This is especially usefull for enterprise Switches and Routers.
+Adds another layer on top of Net::SSH for a proper handling of CLI sessions which last longer than one command. This is especially usefull for enterprise Switches and Routers.
 
 ## Installation
 
@@ -20,10 +20,14 @@ Or install it yourself as:
 
 ## Features
 
+ - provides an abstraction on top of the text-stream of a long living CLI sessions
+ - tries to be highly configurable
+ - has methods like #cmd and #dialog for common usecases
+ - offers waiting operations like #read_till
+
 ## Usage
 
 ```ruby
-
 Net::SSH.start('host', 'user', password: "password") do |ssh|
   cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m)
   cli.cmd ""
@@ -32,6 +36,17 @@ Net::SSH.start('host', 'user', password: "password") do |ssh|
   cli.cmd "echo 'bananas'"
   # => "echo 'bananas'\nbananas\nuser@host:"
 end
+```
+
+```ruby
+  net_ssh = Net::SSH.start('host', 'user', password: "password")
+  cli = Net::SSH::CLI::Channel.new(net_ssh: net_ssh)
+  cli.cmd ""
+```
+
+```ruby
+  cli = Net::SSH::CLI::Channel.new(net_ssh_options: {host: 'host', user: 'user', password: 'password'})
+  cli.cmd ""
 ```
 
 ### #cmd
@@ -45,6 +60,10 @@ end
   # => "echo 'bananas'\nbananas"
   cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true
   # => "bananas"
+```
+
+Remove the command and the prompt for #cmd & #dialog by default
+```ruby
   cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m, cmd_rm_command: true, cmd_rm_prompt: true)
   cli.cmd "echo 'bananas'"
   # => "bananas"
