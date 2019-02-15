@@ -36,6 +36,7 @@ end
 
 ### #cmd
 ```ruby
+  cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m)
   cli.cmd "echo 'bananas'"
   # => "echo 'bananas'\nbananas\nuser@host:"
   cli.cmd "echo 'bananas'", rm_command: true
@@ -43,6 +44,9 @@ end
   cli.cmd "echo 'bananas'", rm_prompt: true
   # => "echo 'bananas'\nbananas"
   cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true
+  # => "bananas"
+  cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m, cmd_rm_command: true, cmd_rm_prompt: true)
+  cli.cmd "echo 'bananas'"
   # => "bananas"
 ```
 
