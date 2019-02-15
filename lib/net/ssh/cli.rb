@@ -63,7 +63,7 @@ module Net
         @options = ActiveSupport::HashWithIndifferentAccess.new(opts)
       end
 
-      [:default_prompt, :process_time, :read_till_timeout, :cmd_rm_command, :cmd_rm_prompt, :read_till_rm_prompt, :lazy].each do |name|
+      %i[default_prompt process_time read_till_timeout cmd_rm_command cmd_rm_prompt read_till_rm_prompt lazy].each do |name|
         define_method name do
           options[name]
         end
@@ -72,7 +72,7 @@ module Net
         end
       end
 
-      [:process_stdout_procs, :process_stderr_procs, :named_prompts, :net_ssh_options, :open_channel_options].each do |name|
+      %i[process_stdout_procs process_stderr_procs named_prompts net_ssh_options open_channel_options].each do |name|
         define_method name do
           options[name] ||= ActiveSupport::HashWithIndifferentAccess.new
         end
@@ -216,10 +216,8 @@ module Net
         logger.debug { "#with_prompt: => #{current_prompt.inspect}" }
       end
 
-      def read_till(prompt: current_prompt, **options)
+      def read_till(prompt: current_prompt, timeout: read_till_timeout, **opts)
         raise Error::UndefinedMatch, 'no prompt given or default_prompt defined' unless prompt
-
-        timeout = options[:timeout] || read_till_timeout
         ::Timeout.timeout(timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{timeout}")) do
           with_prompt(prompt) do
             process until stdout[default_prompt]
@@ -231,56 +229,56 @@ module Net
       ensure
       end
 
-      def read_for(seconds:, **_options)
+      def read_for(seconds:)
         process
         sleep seconds
         process
         read
       end
 
-      def dialog(command, prompt, **options)
+      def dialog(command, prompt, **opts)
         pre_read = read
         logger.debug { "#dialog ignores the following pre-output #{pre_read.inspect}" } if pre_read.present?
         write command
-        output = read_till(prompt: prompt, **options)
-        rm_prompt!(output, prompt: prompt, **options)
-        rm_command!(output, command, prompt: prompt, **options)
+        output = read_till(prompt: prompt, **opts)
+        rm_prompt!(output, prompt: prompt, **opts)
+        rm_command!(output, command, prompt: prompt, **opts)
         output
       end
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
       # this should avoid many horrible state issues where the prompt is not the last prompt
-      def cmd(command, **options)
+      def cmd(command, **opts)
         pre_read = read
         logger.debug { "#cmd ignoring pre-read: #{pre_read.inspect}" } if pre_read.present?
         write_n command
-        output = read_till(**options)
-        rm_prompt!(output, **options)
-        rm_command!(output, command, **options)
+        output = read_till(**opts)
+        rm_prompt!(output, **opts)
+        rm_command!(output, command, **opts)
         output
       end
       alias command cmd
 
-      def cmds(commands, **options)
-        commands.map { |command| [command, cmd(command, **options)] }.to_h
+      def cmds(commands, **opts)
+        commands.map { |command| [command, cmd(command, **opts)] }.to_h
       end
       alias commands cmds
 
       def rm_command?(**opts)
-        !opts[:rm_cmd].nil? ? opts[:rm_cmd] : cmd_rm_command
+        opts[:rm_cmd].nil? ? cmd_rm_command : opts[:rm_cmd]
       end
 
-      def rm_command!(output, command, **options)
-        output[command + "\n"] = '' if rm_command?(options) && output[command + "\n"]
+      def rm_command!(output, command, **opts)
+        output[command + "\n"] = '' if rm_command?(opts) && output[command + "\n"]
       end
 
       def rm_prompt?(**opts)
-        !opts[:rm_prompt].nil? ? opts[:rm_prompt] : cmd_rm_prompt
+        opts[:rm_prompt].nil? ? cmd_rm_prompt : opts[:rm_prompt]
       end
 
-      def rm_prompt!(output, **options)
-        if rm_prompt?(options)
-          prompt = options[:prompt] || default_prompt
+      def rm_prompt!(output, **opts)
+        if rm_prompt?(opts)
+          prompt = opts[:prompt] || default_prompt
           if output[prompt]
             prompt.is_a?(Regexp) ? output[prompt, 1] = '' : output[prompt] = ''
           end
