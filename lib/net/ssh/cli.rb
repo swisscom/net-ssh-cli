@@ -92,7 +92,7 @@ module Net
 
         logger.debug { 'Net:SSH #start' }
         self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV['USER'], net_ssh_options)
-      rescue StandardError => error
+      rescue => error
         self.net_ssh = nil
         raise
       ensure
@@ -167,7 +167,7 @@ module Net
         stderr
       end
 
-      def write(content = '')
+      def write(content = String.new)
         raise Error, 'channel is not stablished or gone' unless channel
 
         logger.debug { "#write #{content.inspect}" }
@@ -196,16 +196,17 @@ module Net
         @with_prompt ? (@with_prompt[-1] || default_prompt) : default_prompt
       end
 
-      def with_named_prompt(name, &blk)
-        raise Error::UndefinedMatch.new("unknown named_prompt #{name}") unless named_prompts[name]
+      def with_named_prompt(name)
+        raise Error::UndefinedMatch, "unknown named_prompt #{name}" unless named_prompts[name]
+
         with_prompt(named_prompts[name]) do
           yield
         end
       end
 
-      # prove a block where the default prompt changes 
-      def with_prompt(prompt, &blk)
-        logger.debug {"#with_prompt: #{current_prompt.inspect} => #{prompt.inspect}"} 
+      # prove a block where the default prompt changes
+      def with_prompt(prompt)
+        logger.debug { "#with_prompt: #{current_prompt.inspect} => #{prompt.inspect}" }
         @with_prompt ||= []
         @with_prompt << prompt
         self.default_prompt = prompt

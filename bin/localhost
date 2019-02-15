@@ -26,7 +26,7 @@ begin
   puts "\nPUTS #{$cli.read}"
   puts "\nPUTS #{$cli.write "\n"}"
   puts "\nPUTS TILL #{$cli.read_till}"
-  #$cli.close
+  # $cli.close
 rescue => error
   puts error.class
   puts error.message
