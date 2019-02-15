@@ -40,8 +40,8 @@ module Net
         lazy: true
       )
 
-      def default(**defaults)
-        (@default ||= DEFAULT.clone).merge(**defaults)
+      def default
+        @default ||= DEFAULT.clone
       end
 
       def default!(**defaults)
@@ -49,7 +49,7 @@ module Net
       end
 
       # don't even think about nesting hashes here
-      def options(**_opts)
+      def options
         @options ||= default
       end
 
@@ -89,7 +89,6 @@ module Net
 
       def net_ssh
         return @net_ssh if @net_ssh
-
         logger.debug { 'Net:SSH #start' }
         self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV['USER'], net_ssh_options)
       rescue => error
@@ -167,6 +166,7 @@ module Net
 
       def process_stdout(data)
         stdout << data
+        process
         process_stdout_procs.each { |_name, a_proc| a_proc.call }
         stdout
       end
@@ -179,7 +179,6 @@ module Net
 
       def write(content = String.new)
         raise Error, 'channel is not stablished or gone' unless channel
-
         logger.debug { "#write #{content.inspect}" }
         channel.send_data content
         process
@@ -193,10 +192,9 @@ module Net
       # returns the stdout buffer and empties it
       def read
         process
-        pre_buf = stdout
-        self.stdout = String.new
-        logger.debug("#read: \n#{pre_buf}")
-        pre_buf
+        var = stdout!
+        logger.debug("#read: \n#{var}")
+        var
       end
 
       ## fancy prompt|prompt handling methods
@@ -270,7 +268,7 @@ module Net
       alias command cmd
 
       def cmds(commands, **opts)
-        commands.map { |command| [command, cmd(command, **opts)] }.to_h
+        commands.map { |command| [command, cmd(command, **opts)] }
       end
       alias commands cmds
 

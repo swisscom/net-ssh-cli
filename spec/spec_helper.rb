@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'bundler/setup'
+require 'simplecov'
+SimpleCov.start
 require 'net/ssh/cli'
 
 RSpec.configure do |config|
