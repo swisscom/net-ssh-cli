@@ -20,6 +20,7 @@ module Net
         self.options.merge!(opts)
         self.net_ssh = options.delete(:net_ssh)
         self.logger = options.delete(:logger) || Logger.new(STDOUT, level: Logger::WARN)
+        open_channel unless lazy
       end
 
       attr_accessor :channel, :stdout, :stderr, :net_ssh, :logger
@@ -34,6 +35,7 @@ module Net
         read_till_rm_prompt:  false,
         cmd_rm_prompt:  false,
         cmd_rm_command: false, 
+        lazy: true
       )
 
       def default(**defaults)
@@ -59,7 +61,7 @@ module Net
         @options = ActiveSupport::HashWithIndifferentAccess.new(opts)
       end
 
-      [:default_prompt, :process_time, :read_till_timeout, :cmd_rm_command, :cmd_rm_prompt, :read_till_rm_prompt].each do |name|
+      [:default_prompt, :process_time, :read_till_timeout, :cmd_rm_command, :cmd_rm_prompt, :read_till_rm_prompt, :lazy].each do |name|
         define_method name do
           options[name]
         end
@@ -332,8 +334,9 @@ class Net::SSH::CLI::Channel
   end
 end
 
-module Net::SSH
-  def open_cli_channel
-    NET::SSH::CLI::Channel.new(net_ssh: self)
+class Net::SSH::Connection::Session
+  attr_accessor :cli_channels
+  def open_cli_channel(**opts)
+    Net::SSH::CLI::Channel.new({net_ssh: self, lazy: false}.merge(opts))
   end
 end

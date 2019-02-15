@@ -1,8 +1,6 @@
 # Net::SSH::CLI
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/net/ssh/cli`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Adds another layer on top of NET::SSH for a proper handling of CLI sessions which last longer than one command. This is especially usefull for enterprise Switches and Routers.
 
 ## Installation
 
@@ -20,9 +18,34 @@ Or install it yourself as:
 
     $ gem install net-ssh-cli
 
+## Features
+
 ## Usage
 
-TODO: Write usage instructions here
+```ruby
+
+Net::SSH.start('host', 'user', password: "password") do |ssh|
+  cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m)
+
+  #cmd
+  cli.cmd ""
+  # => "Last login: \nuser@host:"
+  cli.cmd "echo 'bananas'"
+  # => "echo 'bananas'\nbananas\nuser@host:"
+end
+```
+
+### cmd
+```ruby
+  cli.cmd "echo 'bananas'"
+  # => "echo 'bananas'\nbananas\nuser@host:"
+  cli.cmd "echo 'bananas'", rm_command: true
+  # => "bananas\nuser@host:"
+  cli.cmd "echo 'bananas'", rm_prompt: true
+  # => "echo 'bananas'\nbananas"
+  cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true
+  # => "bananas"
+```
 
 ## Development
 
@@ -32,7 +55,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/net-ssh-cli.
+Bug reports and pull requests are welcome on GitHub at https://github.com/swisscom/net-ssh-cli.
 
 ## License
 
