@@ -16,6 +16,19 @@ RSpec.describe Net::SSH::CLI do
     before(:each) { allow(cli).to receive(:channel) { channel } }
     before(:each) { allow(cli).to receive(:process) { true } }
     before(:each) { allow(channel).to receive(:send_data) { true } }
+    before(:each) { allow(net_ssh).to receive(:host) { "localhost" } }
+
+    context '#host' do
+      it "checks net_ssh" do
+        expect(cli.host).to eq("localhost")
+      end
+      it "#hostname" do
+        expect(cli.hostname).to eq("localhost")
+      end
+      it "#to_s" do
+        expect(cli.to_s).to eq("localhost")
+      end
+    end
 
     context 'low level' do
       context '#read' do

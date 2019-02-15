@@ -99,6 +99,16 @@ module Net
       end
       alias proxy net_ssh
 
+      def host
+        net_ssh_options[:host] || net_ssh_options[:hostname] || net_ssh_options[:ip] || @net_ssh&.host
+      end
+      alias to_s host
+      alias hostname host
+
+      def ip
+        net_ssh_options[:ip]
+      end
+
       ## channel & stderr|stdout stream handling
       #
 
