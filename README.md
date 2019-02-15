@@ -26,16 +26,15 @@ Or install it yourself as:
 
 Net::SSH.start('host', 'user', password: "password") do |ssh|
   cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m)
-
-  #cmd
   cli.cmd ""
   # => "Last login: \nuser@host:"
+
   cli.cmd "echo 'bananas'"
   # => "echo 'bananas'\nbananas\nuser@host:"
 end
 ```
 
-### cmd
+### #cmd
 ```ruby
   cli.cmd "echo 'bananas'"
   # => "echo 'bananas'\nbananas\nuser@host:"
@@ -45,6 +44,13 @@ end
   # => "echo 'bananas'\nbananas"
   cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true
   # => "bananas"
+```
+
+### #dialog
+```ruby
+  cli.dialog "echo 'are you sure?' && read -p 'yes|no>'", /\nyes|no>/
+  # => "echo 'are you sure?' && read -p 'yes|no>'\nyes|no>"
+  cli.cmd "yes"
 ```
 
 ## Development
