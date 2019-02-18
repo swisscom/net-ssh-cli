@@ -95,7 +95,6 @@ module Net
       rescue => error
         self.net_ssh = nil
         raise
-      ensure
       end
       alias proxy net_ssh
 
@@ -162,7 +161,6 @@ module Net
       rescue => error
         close
         raise
-      ensure
       end
 
       def process_stdout(data)
@@ -237,9 +235,6 @@ module Net
           end
         end
         read
-      rescue => error
-        raise
-      ensure
       end
 
       def read_for(seconds:)
