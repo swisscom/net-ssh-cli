@@ -90,9 +90,10 @@ module Net
 
       def net_ssh
         return @net_ssh if @net_ssh
+
         logger.debug { 'Net:SSH #start' }
         self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV['USER'], net_ssh_options)
-      rescue => error
+      rescue StandardError => error
         self.net_ssh = nil
         raise
       end
@@ -158,7 +159,7 @@ module Net
         read_till if open_channel_options[:after_read_till_prompt]
         open_channel_options[:after_proc]&.call
         process
-      rescue => error
+      rescue StandardError => error
         close
         raise
       end
