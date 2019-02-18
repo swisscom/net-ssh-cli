@@ -221,7 +221,6 @@ module Net
       # prove a block where the default prompt changes
       def with_prompt(prompt)
         logger.debug { "#with_prompt: #{current_prompt.inspect} => #{prompt.inspect}" }
-        @with_prompt ||= []
         @with_prompt << prompt
         yield
         prompt
