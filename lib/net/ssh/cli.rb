@@ -225,7 +225,6 @@ module Net
         yield
         prompt
       ensure
-        puts :ensure
         @with_prompt.delete_at(-1)
         logger.debug { "#with_prompt: => #{current_prompt.inspect}" }
       end
