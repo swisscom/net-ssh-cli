@@ -23,6 +23,7 @@ module Net
         self.net_ssh = options.delete(:net_ssh)
         self.logger = options.delete(:logger) || Logger.new(STDOUT, level: Logger::WARN)
         open_channel unless lazy
+        @with_prompt = []
       end
 
       attr_accessor :channel, :stdout, :stderr, :net_ssh, :logger
@@ -222,10 +223,11 @@ module Net
         logger.debug { "#with_prompt: #{current_prompt.inspect} => #{prompt.inspect}" }
         @with_prompt ||= []
         @with_prompt << prompt
-        self.default_prompt = prompt
         yield
+        prompt
       ensure
-        self.default_prompt = @with_prompt.delete_at(-1)
+        puts :ensure
+        @with_prompt.delete_at(-1)
         logger.debug { "#with_prompt: => #{current_prompt.inspect}" }
       end
 
@@ -233,7 +235,7 @@ module Net
         raise Error::UndefinedMatch, 'no prompt given or default_prompt defined' unless prompt
         ::Timeout.timeout(timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{timeout}")) do
           with_prompt(prompt) do
-            process until stdout[default_prompt]
+            process until stdout[current_prompt]
           end
         end
         read
@@ -291,7 +293,7 @@ module Net
 
       def rm_prompt!(output, **opts)
         if rm_prompt?(opts)
-          prompt = opts[:prompt] || default_prompt
+          prompt = opts[:prompt] || current_prompt
           if output[prompt]
             prompt.is_a?(Regexp) ? output[prompt, 1] = '' : output[prompt] = ''
           end

@@ -201,10 +201,40 @@ RSpec.describe Net::SSH::CLI do
       context '#read_for' do
         it 'sends a command and waits for a prompt' do
           allow(cli).to receive(:sleep) {true}
-          allow(cli).to receive(:read) {"asdf"}
           expect(cli).to receive(:read)
           expect(cli).to receive(:sleep).with(5)
-          expect(cli.read_for(seconds: 5)).to eq("asdf")
+          expect(cli.read_for(seconds: 5)).to eq("the_prompt")
+        end
+      end
+
+      context '#default_prompt' do
+        it "can be a string" do 
+          expect(cli.default_prompt).to eq("the_prompt")
+        end
+      end
+
+      context '#with_prompt' do
+        it "yields the new prompt" do
+          expect(cli.default_prompt).to eq("the_prompt")
+          expect(cli.current_prompt).to eq("the_prompt")
+          cli.with_prompt("root@server") do
+            expect(cli.current_prompt).to eq("root@server")
+          end
+          expect(cli.default_prompt).to eq("the_prompt")
+          expect(cli.current_prompt).to eq("the_prompt")
+        end
+      end
+    
+      context '#with_named_prompt' do
+        it "yields the new prompt" do
+          cli.named_prompts["root"] = "root@server"
+          expect(cli.default_prompt).to eq("the_prompt")
+          expect(cli.current_prompt).to eq("the_prompt")
+          cli.with_named_prompt("root") do
+            expect(cli.current_prompt).to eq("root@server")
+          end
+          expect(cli.default_prompt).to eq("the_prompt")
+          expect(cli.current_prompt).to eq("the_prompt")
         end
       end
     end
