@@ -166,13 +166,14 @@ module Net
 
       def process_stdout(data)
         stdout << data
-        process
+        process # if we receive data, we probably receive more - improves performance
         process_stdout_procs.each { |_name, a_proc| a_proc.call }
         stdout
       end
 
       def process_stderr(data, _type)
         stderr << data
+        process # if we receive data, we probably receive more - improves performance
         process_stderr_procs.each { |_name, a_proc| a_proc.call }
         stderr
       end
@@ -213,7 +214,7 @@ module Net
 
       def detect_prompt(seconds: 5)
         process(seconds)
-        self.default_prompt = read[/\n.*\z/]
+        self.default_prompt = read[/\n.*\n?\z/]
       end
 
       # prove a block where the default prompt changes

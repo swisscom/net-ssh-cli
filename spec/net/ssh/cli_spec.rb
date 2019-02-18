@@ -7,6 +7,18 @@ RSpec.describe Net::SSH::CLI do
     expect(Net::SSH::CLI::VERSION).not_to be nil
   end
 
+  describe 'initializes nicely' do
+    let(:cli) { Net::SSH::CLI::Channel.new() }
+    it {expect(cli.stdout).to eq("")}
+    it {expect(cli.stderr).to eq("")}
+    it {expect(Net::SSH::CLI::DEFAULT).to be_a(ActiveSupport::HashWithIndifferentAccess)}
+    it {expect(cli.default).to be_a(ActiveSupport::HashWithIndifferentAccess)}
+    it {expect(cli.options).to be_a(ActiveSupport::HashWithIndifferentAccess)}
+    it {expect(cli.net_ssh_options).to be_a(ActiveSupport::HashWithIndifferentAccess)}
+    it {expect(cli.open_channel_options).to be_a(ActiveSupport::HashWithIndifferentAccess)}
+    it {expect(cli.logger).to be_a(Logger)}
+  end
+
   describe 'fake Socket' do
     let(:default_prompt) { 'the_prompt' }
     let(:channel) { double(Net::SSH::Connection::Channel) }
@@ -56,7 +68,35 @@ RSpec.describe Net::SSH::CLI do
       end
     end
 
+    context '#detect_prompt' do
+      it "detects the prompt" do
+        cli.stdout << "welcome!\n\nasdf\n\nthe_prompt"
+        expect(cli.detect_prompt).to eq("\nthe_prompt")
+        expect(cli.default_prompt).to eq("\nthe_prompt")
+      end
+      it "detects the strange prompt" do
+        cli.stdout << "welcome!\n\nasdf\n\nthe_!@#U$:>\""
+        expect(cli.detect_prompt).to eq("\nthe_!@#U$:>\"")
+      end
+    end
+
     context 'low level' do
+      context '#stdout!' do
+        it 'returns the value and emptries it' do
+          cli.stdout = "asdf"
+          expect(cli.stdout!).to eq("asdf")
+          expect(cli.stdout).to eq("")
+        end
+      end
+
+      context '#stderr!' do
+        it 'returns the value and emptries it' do
+          cli.stderr = "asdf"
+          expect(cli.stderr!).to eq("asdf")
+          expect(cli.stderr).to eq("")
+        end
+      end
+
       context '#read' do
         it 'reads the stdout var' do
           cli.stdout = 'asdf'
@@ -78,6 +118,26 @@ RSpec.describe Net::SSH::CLI do
       context '#write_n' do
         it 'returns the value' do
           expect(cli.write_n('asdf')).to eq("asdf\n")
+        end
+      end
+      
+      context '#process_stdout' do
+        it 'returns the value' do
+          cli.stdout = "qwer"
+          a_proc = Proc.new {} 
+          cli.process_stdout_procs = {one: a_proc}
+          expect(a_proc).to receive(:call)
+          expect(cli.process_stdout('asdf')).to eq("qwerasdf")
+        end
+      end
+
+      context '#process_stderr' do
+        it 'returns the value' do
+          cli.stderr = "qwer"
+          a_proc = Proc.new {} 
+          cli.process_stderr_procs = {one: a_proc}
+          expect(a_proc).to receive(:call)
+          expect(cli.process_stderr('asdf', 0)).to eq("qwerasdf")
         end
       end
     end
@@ -125,6 +185,7 @@ RSpec.describe Net::SSH::CLI do
           expect(cli.cmds(["command", "command"])).to eq([["command", "command\nthe_prompt"],["command", "command\nthe_prompt"]])
         end
       end
+
       context '#dialog' do
         before { allow(cli).to receive(:read_till) { "command\noutput\nthe_dialog_prompt" } }
         it 'sends a command and waits for a prompt' do
@@ -134,6 +195,16 @@ RSpec.describe Net::SSH::CLI do
         end
         it 'deletes the cmd and the prompt' do
           expect(cli.dialog('command', /(the_dialog_prompt)/, rm_cmd: true, rm_prompt: true)).to eq("output\n")
+        end
+      end
+
+      context '#read_for' do
+        it 'sends a command and waits for a prompt' do
+          allow(cli).to receive(:sleep) {true}
+          allow(cli).to receive(:read) {"asdf"}
+          expect(cli).to receive(:read)
+          expect(cli).to receive(:sleep).with(5)
+          expect(cli.read_for(seconds: 5)).to eq("asdf")
         end
       end
     end
