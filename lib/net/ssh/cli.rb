@@ -179,6 +179,7 @@ module Net
 
       def write(content = String.new)
         raise Error, 'channel is not stablished or gone' unless channel
+
         logger.debug { "#write #{content.inspect}" }
         channel.send_data content
         process
@@ -206,6 +207,7 @@ module Net
 
       def with_named_prompt(name)
         raise Error::UndefinedMatch, "unknown named_prompt #{name}" unless named_prompts[name]
+
         with_prompt(named_prompts[name]) do
           yield
         end
@@ -227,8 +229,9 @@ module Net
         logger.debug { "#with_prompt: => #{current_prompt.inspect}" }
       end
 
-      def read_till(prompt: current_prompt, timeout: read_till_timeout, **opts)
+      def read_till(prompt: current_prompt, timeout: read_till_timeout, **_opts)
         raise Error::UndefinedMatch, 'no prompt given or default_prompt defined' unless prompt
+
         ::Timeout.timeout(timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{timeout}")) do
           with_prompt(prompt) do
             process until stdout[current_prompt]
@@ -332,6 +335,7 @@ module Net
       end
 
       private
+
     end
   end
 end

@@ -8,15 +8,15 @@ RSpec.describe Net::SSH::CLI do
   end
 
   describe 'initializes nicely' do
-    let(:cli) { Net::SSH::CLI::Channel.new() }
-    it {expect(cli.stdout).to eq("")}
-    it {expect(cli.stderr).to eq("")}
-    it {expect(Net::SSH::CLI::DEFAULT).to be_a(ActiveSupport::HashWithIndifferentAccess)}
-    it {expect(cli.default).to be_a(ActiveSupport::HashWithIndifferentAccess)}
-    it {expect(cli.options).to be_a(ActiveSupport::HashWithIndifferentAccess)}
-    it {expect(cli.net_ssh_options).to be_a(ActiveSupport::HashWithIndifferentAccess)}
-    it {expect(cli.open_channel_options).to be_a(ActiveSupport::HashWithIndifferentAccess)}
-    it {expect(cli.logger).to be_a(Logger)}
+    let(:cli) { Net::SSH::CLI::Channel.new }
+    it { expect(cli.stdout).to eq('') }
+    it { expect(cli.stderr).to eq('') }
+    it { expect(Net::SSH::CLI::DEFAULT).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.default).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.net_ssh_options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.open_channel_options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.logger).to be_a(Logger) }
   end
 
   describe 'fake Socket' do
@@ -28,25 +28,25 @@ RSpec.describe Net::SSH::CLI do
     before(:each) { allow(cli).to receive(:channel) { channel } }
     before(:each) { allow(cli).to receive(:process) { true } }
     before(:each) { allow(channel).to receive(:send_data) { true } }
-    before(:each) { allow(net_ssh).to receive(:host) { "localhost" } }
+    before(:each) { allow(net_ssh).to receive(:host) { 'localhost' } }
 
     context 'configuration' do
-      context "#options" do
+      context '#options' do
         let(:cli) { Net::SSH::CLI::Channel.new(default_prompt: default_prompt, net_ssh: net_ssh) }
-        it {expect(cli.options).to be_a(Hash)}
-        it {expect(cli.options).to be_a(ActiveSupport::HashWithIndifferentAccess)}
-        it {expect(cli.options).to include(:process_time)}
-        it {expect(cli.options!(banana: true)).to include(:banana)}
-        it {expect(cli.options = {}).to eq({})}
+        it { expect(cli.options).to be_a(Hash) }
+        it { expect(cli.options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+        it { expect(cli.options).to include(:process_time) }
+        it { expect(cli.options!(banana: true)).to include(:banana) }
+        it { expect(cli.options = {}).to eq({}) }
       end
-      context "#default" do
-        it {expect(Net::SSH::CLI::DEFAULT).to include(:process_time)}
-        it {expect(Net::SSH::CLI::DEFAULT).to include(:default_prompt)}
-        it {expect(cli.default).to be_a(Hash)}
-        it {expect(cli.default).to be_a(ActiveSupport::HashWithIndifferentAccess)}
-        it {expect(cli.default).to include(:default_prompt)}
-        it {expect(cli.default!).to include(:default_prompt)}
-        it "merges!" do
+      context '#default' do
+        it { expect(Net::SSH::CLI::DEFAULT).to include(:process_time) }
+        it { expect(Net::SSH::CLI::DEFAULT).to include(:default_prompt) }
+        it { expect(cli.default).to be_a(Hash) }
+        it { expect(cli.default).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+        it { expect(cli.default).to include(:default_prompt) }
+        it { expect(cli.default!).to include(:default_prompt) }
+        it 'merges!' do
           cli.default!(banana: true)
           expect(cli.default).to include(:banana)
         end
@@ -54,27 +54,27 @@ RSpec.describe Net::SSH::CLI do
     end
 
     context '#host' do
-      it "checks net_ssh" do
-        expect(cli.host).to eq("localhost")
+      it 'checks net_ssh' do
+        expect(cli.host).to eq('localhost')
       end
-      it "#hostname" do
-        expect(cli.hostname).to eq("localhost")
+      it '#hostname' do
+        expect(cli.hostname).to eq('localhost')
       end
-      it "#to_s" do
-        expect(cli.to_s).to eq("localhost")
+      it '#to_s' do
+        expect(cli.to_s).to eq('localhost')
       end
-      it "#ip" do
+      it '#ip' do
         expect(cli.ip).to eq(nil)
       end
     end
 
     context '#detect_prompt' do
-      it "detects the prompt" do
+      it 'detects the prompt' do
         cli.stdout << "welcome!\n\nasdf\n\nthe_prompt"
         expect(cli.detect_prompt).to eq("\nthe_prompt")
         expect(cli.default_prompt).to eq("\nthe_prompt")
       end
-      it "detects the strange prompt" do
+      it 'detects the strange prompt' do
         cli.stdout << "welcome!\n\nasdf\n\nthe_!@#U$:>\""
         expect(cli.detect_prompt).to eq("\nthe_!@#U$:>\"")
       end
@@ -83,17 +83,17 @@ RSpec.describe Net::SSH::CLI do
     context 'low level' do
       context '#stdout!' do
         it 'returns the value and emptries it' do
-          cli.stdout = "asdf"
-          expect(cli.stdout!).to eq("asdf")
-          expect(cli.stdout).to eq("")
+          cli.stdout = 'asdf'
+          expect(cli.stdout!).to eq('asdf')
+          expect(cli.stdout).to eq('')
         end
       end
 
       context '#stderr!' do
         it 'returns the value and emptries it' do
-          cli.stderr = "asdf"
-          expect(cli.stderr!).to eq("asdf")
-          expect(cli.stderr).to eq("")
+          cli.stderr = 'asdf'
+          expect(cli.stderr!).to eq('asdf')
+          expect(cli.stderr).to eq('')
         end
       end
 
@@ -120,24 +120,24 @@ RSpec.describe Net::SSH::CLI do
           expect(cli.write_n('asdf')).to eq("asdf\n")
         end
       end
-      
+
       context '#process_stdout' do
         it 'returns the value' do
-          cli.stdout = "qwer"
-          a_proc = Proc.new {} 
-          cli.process_stdout_procs = {one: a_proc}
+          cli.stdout = 'qwer'
+          a_proc = proc {}
+          cli.process_stdout_procs = { one: a_proc }
           expect(a_proc).to receive(:call)
-          expect(cli.process_stdout('asdf')).to eq("qwerasdf")
+          expect(cli.process_stdout('asdf')).to eq('qwerasdf')
         end
       end
 
       context '#process_stderr' do
         it 'returns the value' do
-          cli.stderr = "qwer"
-          a_proc = Proc.new {} 
-          cli.process_stderr_procs = {one: a_proc}
+          cli.stderr = 'qwer'
+          a_proc = proc {}
+          cli.process_stderr_procs = { one: a_proc }
           expect(a_proc).to receive(:call)
-          expect(cli.process_stderr('asdf', 0)).to eq("qwerasdf")
+          expect(cli.process_stderr('asdf', 0)).to eq('qwerasdf')
         end
       end
     end
@@ -178,11 +178,11 @@ RSpec.describe Net::SSH::CLI do
         end
       end
 
-      context "#cmds" do
+      context '#cmds' do
         before { allow(cli).to receive(:read_till) { "command\nthe_prompt" } }
-        it "returns a hash" do
+        it 'returns a hash' do
           expect(cli.cmds([])).to eq([])
-          expect(cli.cmds(["command", "command"])).to eq([["command", "command\nthe_prompt"],["command", "command\nthe_prompt"]])
+          expect(cli.cmds(%w[command command])).to eq([%W[command command\nthe_prompt], %W[command command\nthe_prompt]])
         end
       end
 
@@ -200,41 +200,41 @@ RSpec.describe Net::SSH::CLI do
 
       context '#read_for' do
         it 'sends a command and waits for a prompt' do
-          allow(cli).to receive(:sleep) {true}
+          allow(cli).to receive(:sleep) { true }
           expect(cli).to receive(:read)
           expect(cli).to receive(:sleep).with(5)
-          expect(cli.read_for(seconds: 5)).to eq("the_prompt")
+          expect(cli.read_for(seconds: 5)).to eq('the_prompt')
         end
       end
 
       context '#default_prompt' do
-        it "can be a string" do 
-          expect(cli.default_prompt).to eq("the_prompt")
+        it 'can be a string' do
+          expect(cli.default_prompt).to eq('the_prompt')
         end
       end
 
       context '#with_prompt' do
-        it "yields the new prompt" do
-          expect(cli.default_prompt).to eq("the_prompt")
-          expect(cli.current_prompt).to eq("the_prompt")
-          cli.with_prompt("root@server") do
-            expect(cli.current_prompt).to eq("root@server")
+        it 'yields the new prompt' do
+          expect(cli.default_prompt).to eq('the_prompt')
+          expect(cli.current_prompt).to eq('the_prompt')
+          cli.with_prompt('root@server') do
+            expect(cli.current_prompt).to eq('root@server')
           end
-          expect(cli.default_prompt).to eq("the_prompt")
-          expect(cli.current_prompt).to eq("the_prompt")
+          expect(cli.default_prompt).to eq('the_prompt')
+          expect(cli.current_prompt).to eq('the_prompt')
         end
       end
-    
+
       context '#with_named_prompt' do
-        it "yields the new prompt" do
-          cli.named_prompts["root"] = "root@server"
-          expect(cli.default_prompt).to eq("the_prompt")
-          expect(cli.current_prompt).to eq("the_prompt")
-          cli.with_named_prompt("root") do
-            expect(cli.current_prompt).to eq("root@server")
+        it 'yields the new prompt' do
+          cli.named_prompts['root'] = 'root@server'
+          expect(cli.default_prompt).to eq('the_prompt')
+          expect(cli.current_prompt).to eq('the_prompt')
+          cli.with_named_prompt('root') do
+            expect(cli.current_prompt).to eq('root@server')
           end
-          expect(cli.default_prompt).to eq("the_prompt")
-          expect(cli.current_prompt).to eq("the_prompt")
+          expect(cli.default_prompt).to eq('the_prompt')
+          expect(cli.current_prompt).to eq('the_prompt')
         end
       end
     end
