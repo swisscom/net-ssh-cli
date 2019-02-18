@@ -17,16 +17,17 @@ def reload!
   load __FILE__
 end
 
+$CLI = nil
 begin
-  $cli = Net::SSH::CLI::Channel.new(host: 'localhost', user: ENV['USER'], default_prompt: '@')
-  $cli.open_channel
-  puts "\nPUTS #{$cli.read}"
-  puts "\nPUTS #{$cli.read}"
+  $CLI = Net::SSH::CLI::Channel.new(host: 'localhost', user: ENV['USER'], default_prompt: '@')
+  $CLI.open_channel
+  puts "\nPUTS #{$CLI.read}"
   sleep 0.3
-  puts "\nPUTS #{$cli.read}"
-  puts "\nPUTS #{$cli.write "\n"}"
-  puts "\nPUTS TILL #{$cli.read_till}"
-  # $cli.close
+  puts "\nPUTS #{$CLI.read}"
+  puts "\nPUTS #{$CLI.write "\n"}"
+  puts "\nPUTS TILL #{$CLI.read_till}"
+  puts "try $CLI.cmd"
+  puts File.read(__FILE__)
 rescue StandardError => error
   puts error.class
   puts error.message
