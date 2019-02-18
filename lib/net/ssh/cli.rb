@@ -203,7 +203,7 @@ module Net
       #
 
       def current_prompt
-        @with_prompt ? (@with_prompt[-1] || default_prompt) : default_prompt
+        @with_prompt[-1] || default_prompt
       end
 
       def with_named_prompt(name)
