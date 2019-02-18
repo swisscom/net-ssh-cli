@@ -206,10 +206,14 @@ module Net
 
       def with_named_prompt(name)
         raise Error::UndefinedMatch, "unknown named_prompt #{name}" unless named_prompts[name]
-
         with_prompt(named_prompts[name]) do
           yield
         end
+      end
+
+      def detect_prompt(seconds: 5)
+        process(seconds)
+        self.default_prompt = read[/\n.*\z/]
       end
 
       # prove a block where the default prompt changes

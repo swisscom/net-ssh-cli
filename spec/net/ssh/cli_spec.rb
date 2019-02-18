@@ -125,6 +125,17 @@ RSpec.describe Net::SSH::CLI do
           expect(cli.cmds(["command", "command"])).to eq([["command", "command\nthe_prompt"],["command", "command\nthe_prompt"]])
         end
       end
+      context '#dialog' do
+        before { allow(cli).to receive(:read_till) { "command\noutput\nthe_dialog_prompt" } }
+        it 'sends a command and waits for a prompt' do
+          expect(cli).to receive(:read)
+          expect(cli).to receive(:write)
+          expect(cli.dialog('command', /(the_dialog_prompt)/)).to eq("command\noutput\nthe_dialog_prompt")
+        end
+        it 'deletes the cmd and the prompt' do
+          expect(cli.dialog('command', /(the_dialog_prompt)/, rm_cmd: true, rm_prompt: true)).to eq("output\n")
+        end
+      end
     end
   end
 end
