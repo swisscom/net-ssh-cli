@@ -10,9 +10,9 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Fabian Stillhart']
   spec.email         = ['fabian.stillhart1@swisscom.com']
 
-  spec.summary       = 'Write a short summary, because RubyGems requires one.'
-  spec.description   = 'Write a longer description or delete this line.'
-  # spec.homepage      = "Put your gem's website or public repo URL here."
+  spec.summary       = 'Net::SSH::CLI: A library to handle CLI Sessions'
+  spec.description   = 'Net::SSH::CLI: A library to handle CLI Sessions. It allows you to write programs that invoke and interact with (long-running) CLI Sessions via NET::SSH.'
+  spec.homepage      = 'https://github.com/swisscom/net-ssh-cli'
   spec.license       = 'MIT'
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
