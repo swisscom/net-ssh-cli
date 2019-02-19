@@ -11,3 +11,5 @@
 .rspec_status
 *.swp
 coverage
+/*.gem
+/Gemfile.lock
