@@ -85,6 +85,10 @@ module Net
         end
       end
 
+      def formatted_net_ssh_options
+        net_ssh_options.symbolize_keys.reject {|k,v| [:host, :ip, :user].include?(k)}
+      end
+
       ## Net::SSH instance
       #
 
@@ -92,7 +96,7 @@ module Net
         return @net_ssh if @net_ssh
 
         logger.debug { 'Net:SSH #start' }
-        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV['USER'], net_ssh_options)
+        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV['USER'], formatted_net_ssh_options)
       rescue StandardError => error
         self.net_ssh = nil
         raise
