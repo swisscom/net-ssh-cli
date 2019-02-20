@@ -32,7 +32,7 @@ module Net
       #
 
       DEFAULT = ActiveSupport::HashWithIndifferentAccess.new(
-        default_prompt: /^(\S+@\S+\s*)/,
+        default_prompt: /^(\S+@.*)\z/,
         process_time: 0.00001,
         read_till_timeout: nil,
         read_till_rm_prompt: false,
@@ -221,7 +221,7 @@ module Net
 
       def detect_prompt(seconds: 5)
         process(seconds)
-        self.default_prompt = read[/\n.*\n?\z/]
+        self.default_prompt = read[/.*\z/]
       end
 
       # prove a block where the default prompt changes
