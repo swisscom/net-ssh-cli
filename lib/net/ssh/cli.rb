@@ -190,6 +190,7 @@ module Net
         process
         content
       end
+      alias stdin write
 
       def write_n(content = String.new)
         write content + "\n"
