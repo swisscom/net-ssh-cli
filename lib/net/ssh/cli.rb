@@ -32,7 +32,7 @@ module Net
       #
 
       DEFAULT = ActiveSupport::HashWithIndifferentAccess.new(
-        default_prompt: /^(\S+@\S+\s*)/,
+        default_prompt: /^(\S+@.*)\z/,
         process_time: 0.00001,
         read_till_timeout: nil,
         read_till_rm_prompt: false,
@@ -85,6 +85,10 @@ module Net
         end
       end
 
+      def formatted_net_ssh_options
+        net_ssh_options.symbolize_keys.reject {|k,v| [:host, :ip, :user].include?(k)}
+      end
+
       ## Net::SSH instance
       #
 
@@ -92,7 +96,7 @@ module Net
         return @net_ssh if @net_ssh
 
         logger.debug { 'Net:SSH #start' }
-        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV['USER'], net_ssh_options)
+        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV['USER'], formatted_net_ssh_options)
       rescue StandardError => error
         self.net_ssh = nil
         raise
@@ -186,6 +190,7 @@ module Net
         process
         content
       end
+      alias stdin write
 
       def write_n(content = String.new)
         write content + "\n"
@@ -216,7 +221,7 @@ module Net
 
       def detect_prompt(seconds: 5)
         process(seconds)
-        self.default_prompt = read[/\n.*\n?\z/]
+        self.default_prompt = read[/.*\z/]
       end
 
       # prove a block where the default prompt changes
