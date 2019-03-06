@@ -253,9 +253,11 @@ module Net
         read
       end
 
-      def dialog(command, prompt, **opts)
-        pre_read = read
-        logger.debug { "#dialog ignores the following pre-output #{pre_read.inspect}" } if pre_read.present?
+      def dialog(command, prompt, pre_read: true, **opts)
+        if pre_read
+          pre_read_data = read
+          logger.debug { "#dialog ignoring pre-command output: #{pre_read_data.inspect}" } if pre_read_data.present?
+        end
         write command
         output = read_till(prompt: prompt, **opts)
         rm_prompt!(output, prompt: prompt, **opts)
@@ -265,9 +267,11 @@ module Net
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
       # this should avoid many horrible state issues where the prompt is not the last prompt
-      def cmd(command, **opts)
-        pre_read = read
-        logger.debug { "#cmd ignoring pre-read: #{pre_read.inspect}" } if pre_read.present?
+      def cmd(command, pre_read: true, **opts)
+        if pre_read
+          pre_read_data = read
+          logger.debug { "#cmd ignoring pre-command output: #{pre_read_data.inspect}" } if pre_read_data.present?
+        end
         write_n command
         output = read_till(**opts)
         rm_prompt!(output, **opts)
