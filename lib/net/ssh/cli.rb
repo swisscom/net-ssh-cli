@@ -335,7 +335,10 @@ module Net
       # feels wrong
 
       def disconnect
-        close
+        begin
+          close
+        rescue Net::SSH::CLI::Error::RequestShell
+        end
         net_ssh&.close
         self.net_ssh = nil
       end
