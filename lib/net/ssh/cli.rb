@@ -240,7 +240,10 @@ module Net
 
         ::Timeout.timeout(timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{timeout}")) do
           with_prompt(prompt) do
-            process until stdout[current_prompt]
+            until stdout[current_prompt] do
+              process
+              sleep 0.01
+            end
           end
         end
         read
