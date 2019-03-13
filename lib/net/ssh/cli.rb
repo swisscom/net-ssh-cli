@@ -108,8 +108,6 @@ module Net
       end
 
       def write(content = String.new)
-        raise Error, 'channel is not stablished or gone' unless channel
-
         logger.debug { "#write #{content.inspect}" }
         channel.send_data content
         process
