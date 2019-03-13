@@ -174,9 +174,7 @@ module Net
       end
 
       def read_for(seconds:)
-        process
-        sleep seconds
-        process
+        process(seconds)
         read
       end
 
