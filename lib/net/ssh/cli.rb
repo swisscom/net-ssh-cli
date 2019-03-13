@@ -31,7 +31,6 @@ module Net
         options.merge!(opts)
         self.net_ssh = options.delete(:net_ssh)
         self.logger = options.delete(:logger) || Logger.new(STDOUT, level: Logger::WARN)
-        @with_prompt = []
       end
 
       attr_accessor :channel, :stdout, :net_ssh, :logger
@@ -130,7 +129,7 @@ module Net
       #
 
       def current_prompt
-        @with_prompt[-1] || default_prompt
+        with_prompts[-1] || default_prompt
       end
 
       def with_named_prompt(name)
@@ -149,11 +148,11 @@ module Net
       # prove a block where the default prompt changes
       def with_prompt(prompt)
         logger.debug { "#with_prompt: #{current_prompt.inspect} => #{prompt.inspect}" }
-        @with_prompt << prompt
+        with_prompts << prompt
         yield
         prompt
       ensure
-        @with_prompt.delete_at(-1)
+        with_prompts.delete_at(-1)
         logger.debug { "#with_prompt: => #{current_prompt.inspect}" }
       end
 
@@ -209,16 +208,8 @@ module Net
       end
       alias commands cmds
 
-      def rm_command?(**opts)
-        opts[:rm_cmd].nil? ? cmd_rm_command : opts[:rm_cmd]
-      end
-
       def rm_command!(output, command, **opts)
         output[command + "\n"] = '' if rm_command?(opts) && output[command + "\n"]
-      end
-
-      def rm_prompt?(**opts)
-        opts[:rm_prompt].nil? ? cmd_rm_prompt : opts[:rm_prompt]
       end
 
       def rm_prompt!(output, **opts)
@@ -293,8 +284,20 @@ module Net
 
       private 
 
+      def with_prompts
+        @with_prompts ||= []
+      end
+
       def formatted_net_ssh_options
         net_ssh_options.symbolize_keys.reject {|k,v| [:host, :ip, :user].include?(k)}
+      end
+
+      def rm_prompt?(**opts)
+        opts[:rm_prompt].nil? ? cmd_rm_prompt : opts[:rm_prompt]
+      end
+
+      def rm_command?(**opts)
+        opts[:rm_cmd].nil? ? cmd_rm_command : opts[:rm_cmd]
       end
     end
   end
