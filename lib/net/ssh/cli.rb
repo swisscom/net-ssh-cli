@@ -18,40 +18,46 @@ module Net
         class ReadTillTimeout < Error; end
       end
 
+      # Example
+      # net_ssh = Net::SSH.start("localhost")
+      # net_ssh_cli = Net::SSH::CLI.start(net_ssh: net_ssh)
+      # net_ssh_cli.cmd "cat /etc/passwd"
+      # => "root:x:0:0:root:/root:/bin/bash\n..."
+      def self.start(**opts)
+        Net::SSH::CLI::Session.new(**opts)
+      end
+
       def initialize(**opts)
         options.merge!(opts)
         self.net_ssh = options.delete(:net_ssh)
         self.logger = options.delete(:logger) || Logger.new(STDOUT, level: Logger::WARN)
-        open_channel unless lazy
         @with_prompt = []
       end
 
-      attr_accessor :channel, :stdout, :stderr, :net_ssh, :logger
+      attr_accessor :channel, :stdout, :net_ssh, :logger
 
-      ## make everthing configurable!
-      #
-
-      DEFAULT = ActiveSupport::HashWithIndifferentAccess.new(
-        default_prompt: /^(\S+@.*)\z/,
-        process_time: 0.00001,
-        read_till_timeout: nil,
-        read_till_rm_prompt: false,
-        cmd_rm_prompt: false,
-        cmd_rm_command: false,
-        lazy: true
+      OPTIONS = ActiveSupport::HashWithIndifferentAccess.new(
+        default_prompt:         /\n?^(\S+@.*)\z/,                             # the default prompt to search for
+        cmd_rm_prompt:          false,                                        # whether the prompt should be removed in the output of #cmd
+        cmd_rm_command:         false,                                        # whether the given command should be removed in the output of #cmd
+        read_till_timeout:      nil,                                          # timeout for #read_till to find the match
+        named_prompts:          ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
+        before_on_stdout_procs: ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection 
+        after_on_stdout_procs:  ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data arrives from the underlying connection
+        net_ssh_options:        ActiveSupport::HashWithIndifferentAccess.new, # a wrapper for options to pass to Net::SSH.start in case net_ssh is undefined
+        open_channel_timeout:   nil,                                          # timeout to open the channel
+        background_processing:  false,                                        # default false, whether the process method maps to the underlying net_ssh#process or the net_ssh#process happens in a separate loop
+        process_time:           0.00001,                                      # how long #process is processing net_ssh#process or sleeping (waiting for something)
       )
 
-      def default
-        @default ||= DEFAULT.clone
-      end
-
-      def default!(**defaults)
-        default.merge!(**defaults)
-      end
-
-      # don't even think about nesting hashes here
       def options
-        @options ||= default
+        @options ||= begin
+          opts = OPTIONS.clone
+          opts.each do |key,value|
+            opts[key] = value.clone if value.is_a?(Hash)
+          end
+          opts
+        end
       end
 
       # don't even think about nesting hashes here
@@ -59,62 +65,21 @@ module Net
         options.merge!(opts)
       end
 
-      # don't even think about nesting hashes here
       def options=(opts)
         @options = ActiveSupport::HashWithIndifferentAccess.new(opts)
       end
 
-      %i[default_prompt process_time read_till_timeout cmd_rm_command cmd_rm_prompt read_till_rm_prompt lazy].each do |name|
+      OPTIONS.keys.each do |name|
         define_method name do
           options[name]
         end
         define_method "#{name}=" do |value|
           options[name] = value
         end
-      end
-
-      %i[process_stdout_procs process_stderr_procs named_prompts net_ssh_options open_channel_options].each do |name|
-        define_method name do
-          options[name] ||= ActiveSupport::HashWithIndifferentAccess.new
-        end
-        define_method "#{name}!" do |**opts|
-          send(name).merge!(**opts)
-        end
-        define_method "#{name}=" do |value|
-          options[name] = ActiveSupport::HashWithIndifferentAccess.new(value)
+        define_method "#{name}?" do
+          !!options[name]
         end
       end
-
-      def formatted_net_ssh_options
-        net_ssh_options.symbolize_keys.reject {|k,v| [:host, :ip, :user].include?(k)}
-      end
-
-      ## Net::SSH instance
-      #
-
-      def net_ssh
-        return @net_ssh if @net_ssh
-
-        logger.debug { 'Net:SSH #start' }
-        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host], net_ssh_options[:user] || ENV['USER'], formatted_net_ssh_options)
-      rescue StandardError => error
-        self.net_ssh = nil
-        raise
-      end
-      alias proxy net_ssh
-
-      def host
-        net_ssh_options[:host] || net_ssh_options[:hostname] || net_ssh_options[:ip] || @net_ssh&.host
-      end
-      alias to_s host
-      alias hostname host
-
-      def ip
-        net_ssh_options[:ip]
-      end
-
-      ## channel & stderr|stdout stream handling
-      #
 
       def stdout
         @stdout ||= String.new
@@ -126,60 +91,12 @@ module Net
         var
       end
 
-      def stderr
-        @stderr ||= String.new
-      end
-
-      def stderr!
-        var = stderr
-        self.stderr = String.new
-        var
-      end
-
-      def open_channel # cli_channel
-        ::Timeout.timeout(open_channel_options[:timeout], Error::OpenChannelTimeout) do
-          net_ssh.open_channel do |channel_|
-            logger.debug 'channel is open'
-            self.channel = channel_
-            channel_.request_pty do |_ch, success|
-              raise Error::Pty, "#{host || ip} Failed to open ssh pty" unless success
-            end
-            channel_.send_channel_request('shell') do |_ch, success|
-              raise Error::RequestShell, 'Failed to open ssh shell' unless success
-            end
-            channel_.on_data do |_ch, data|
-              process_stdout(data)
-            end
-            channel_.on_extended_data do |_ch, type, data|
-              process_stderr(data, type)
-            end
-            channel_.on_close do
-              close
-            end
-          end
-          until channel do process end
-        end
-        logger.debug 'channel is ready, running callbacks now'
-        read_till if open_channel_options[:after_read_till_prompt]
-        open_channel_options[:after_proc]&.call
-        process
-      rescue StandardError => error
-        close
-        raise
-      end
-
-      def process_stdout(data)
+      def on_stdout(data)
+        before_on_stdout_procs.each { |_name, a_proc| a_proc.call }
         stdout << data
+        after_on_stdout_procs.each  { |_name, a_proc| a_proc.call }
         process # if we receive data, we probably receive more - improves performance
-        process_stdout_procs.each { |_name, a_proc| a_proc.call }
         stdout
-      end
-
-      def process_stderr(data, _type)
-        stderr << data
-        process # if we receive data, we probably receive more - improves performance
-        process_stderr_procs.each { |_name, a_proc| a_proc.call }
-        stderr
       end
 
       def write(content = String.new)
@@ -240,7 +157,10 @@ module Net
 
         ::Timeout.timeout(timeout, Error::ReadTillTimeout.new("output did not prompt #{prompt.inspect} within #{timeout}")) do
           with_prompt(prompt) do
-            process until stdout[current_prompt]
+            until stdout[current_prompt] do
+              process
+              sleep 0.1
+            end
           end
         end
         read
@@ -267,7 +187,7 @@ module Net
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
       # this should avoid many horrible state issues where the prompt is not the last prompt
-      def cmd(command, pre_read: true, **opts)
+      def cmd(command, pre_read: true, rm_prompt: cmd_rm_prompt, rm_command: cmd_rm_command, prompt: current_prompt, **opts)
         if pre_read
           pre_read_data = read
           logger.debug { "#cmd ignoring pre-command output: #{pre_read_data.inspect}" } if pre_read_data.present?
@@ -279,6 +199,7 @@ module Net
         output
       end
       alias command cmd
+      alias exec cmd
 
       def cmds(commands, **opts)
         commands.map { |command| [command, cmd(command, **opts)] }
@@ -306,64 +227,82 @@ module Net
         end
       end
 
+      def host
+        @net_ssh&.host
+      end
+      alias hostname host
+
       ## NET::SSH
       #
 
+      def net_ssh
+        return @net_ssh if @net_ssh
+
+        logger.debug { 'Net:SSH #start' }
+        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host] || "localhost", net_ssh_options[:user] || ENV['USER'], formatted_net_ssh_options)
+      rescue StandardError => error
+        self.net_ssh = nil
+        raise
+      end
+      alias proxy net_ssh
+
+      # have a deep look at the source of Net::SSH
+      # session#process https://github.com/net-ssh/net-ssh/blob/dd13dd44d68b7fa82d4ca9a3bbe18e30c855f1d2/lib/net/ssh/connection/session.rb#L227 
+      # session#loop    https://github.com/net-ssh/net-ssh/blob/dd13dd44d68b7fa82d4ca9a3bbe18e30c855f1d2/lib/net/ssh/connection/session.rb#L179
+      # because the (cli) channel stays open, we always need to ensure that the ssh layer gets "processed" further. This can be done inside here automatically or outside in a separate event loop for the net_ssh connection.
       def process(time = process_time)
-        net_ssh.process(time)
+        background_processing? ? sleep(time) : net_ssh.process(time)
       rescue IOError => error
         raise Error, error.message
       end
 
-      def close
-        return unless net_ssh
+      def open_channel # cli_channel
+        ::Timeout.timeout(open_channel_timeout, Error::OpenChannelTimeout) do
+          net_ssh.open_channel do |new_channel|
+            logger.debug 'channel is open'
+            self.channel = new_channel
+            new_channel.request_pty do |_ch, success|
+              raise Error::Pty, "#{host || ip} Failed to open ssh pty" unless success
+            end
+            new_channel.send_channel_request('shell') do |_ch, success|
+              raise Error::RequestShell, 'Failed to open ssh shell' unless success
+            end
+            new_channel.on_data do |_ch, data|
+              on_stdout(data)
+            end
+            #new_channel.on_extended_data do |_ch, type, data|
+            #end
+            #new_channel.on_close do
+            #end
+          end
+          until channel do process end
+        end
+        logger.debug 'channel is ready, running callbacks now'
+        process
+      end
 
+      def close_channel
+        return unless net_ssh
         net_ssh.cleanup_channel(channel) if channel
         self.channel = nil
-        # ssh.close if ssh.channels.none? # should the connection be closed if the last channel gets closed?
       end
 
-      def connect
-        open_channel unless channel
+      private 
+
+      def formatted_net_ssh_options
+        net_ssh_options.symbolize_keys.reject {|k,v| [:host, :ip, :user].include?(k)}
       end
-
-      def reconnect
-        disconnect
-        connect
-      end
-
-      # feels wrong
-
-      def disconnect
-        begin
-          close
-        rescue Net::SSH::CLI::Error::RequestShell
-        end
-        net_ssh&.close
-        self.net_ssh = nil
-      end
-
-      def shutdown!
-        net_ssh&.shutdown!
-      end
-
-      private
-
     end
   end
 end
 
-class Net::SSH::CLI::Channel
+class Net::SSH::CLI::Session
   include Net::SSH::CLI
-  def initialize(**options)
-    super
-    # open_channel
-  end
 end
 
 class Net::SSH::Connection::Session
   attr_accessor :cli_channels
-  def open_cli_channel(**opts)
-    Net::SSH::CLI::Channel.new({ net_ssh: self, lazy: false }.merge(opts))
+  def cli(**opts)
+    Net::SSH::CLI::Session.new({net_ssh: self}.merge(opts))
   end
 end

@@ -19,7 +19,7 @@ end
 
 $CLI = nil
 begin
-  $CLI = Net::SSH::CLI::Channel.new(net_ssh_options: {host: 'localhost', user: ENV['USER']} , default_prompt: '@')
+  $CLI = Net::SSH::CLI::Session.new(net_ssh_options: {host: 'localhost', user: ENV['USER']} , default_prompt: '@')
   $CLI.open_channel
   puts "\nPUTS #{$CLI.read}"
   sleep 0.3
