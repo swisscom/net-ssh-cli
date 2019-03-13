@@ -37,17 +37,19 @@ module Net
       attr_accessor :channel, :stdout, :net_ssh, :logger
 
       OPTIONS = ActiveSupport::HashWithIndifferentAccess.new(
-        default_prompt:         /\n?^(\S+@.*)\z/,                             # the default prompt to search for
-        cmd_rm_prompt:          false,                                        # whether the prompt should be removed in the output of #cmd
-        cmd_rm_command:         false,                                        # whether the given command should be removed in the output of #cmd
-        read_till_timeout:      nil,                                          # timeout for #read_till to find the match
-        named_prompts:          ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
-        before_on_stdout_procs: ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection 
-        after_on_stdout_procs:  ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data arrives from the underlying connection
-        net_ssh_options:        ActiveSupport::HashWithIndifferentAccess.new, # a wrapper for options to pass to Net::SSH.start in case net_ssh is undefined
-        open_channel_timeout:   nil,                                          # timeout to open the channel
-        background_processing:  false,                                        # default false, whether the process method maps to the underlying net_ssh#process or the net_ssh#process happens in a separate loop
-        process_time:           0.00001,                                      # how long #process is processing net_ssh#process or sleeping (waiting for something)
+        default_prompt:            /\n?^(\S+@.*)\z/,                             # the default prompt to search for
+        cmd_rm_prompt:             false,                                        # whether the prompt should be removed in the output of #cmd
+        cmd_rm_command:            false,                                        # whether the given command should be removed in the output of #cmd
+        read_till_timeout:         nil,                                          # timeout for #read_till to find the match
+        named_prompts:             ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
+        before_on_stdout_procs:    ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection 
+        after_on_stdout_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data arrives from the underlying connection
+        before_open_channel_procs: ActiveSupport::HashWithIndifferentAccess.new, # procs to call before opening a channel 
+        after_open_channel_procs:  ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  opening a channel, for example you could call #detect_prompt or #read_till
+        open_channel_timeout:      nil,                                          # timeout to open the channel
+        net_ssh_options:           ActiveSupport::HashWithIndifferentAccess.new, # a wrapper for options to pass to Net::SSH.start in case net_ssh is undefined
+        process_time:              0.00001,                                      # how long #process is processing net_ssh#process or sleeping (waiting for something)
+        background_processing:     false,                                        # default false, whether the process method maps to the underlying net_ssh#process or the net_ssh#process happens in a separate loop
       )
 
       def options
@@ -78,6 +80,12 @@ module Net
         end
         define_method "#{name}?" do
           !!options[name]
+        end
+      end
+
+      OPTIONS.keys.select {|key| key.to_s.include? "procs"}.each do |name|
+        define_method name.sub("_procs","") do |&blk|
+          self.send(name)[SecureRandom.uuid] = Proc.new {blk.call}
         end
       end
 
@@ -113,7 +121,6 @@ module Net
         write content + "\n"
       end
 
-      # returns the stdout buffer and empties it
       def read
         process
         var = stdout!
@@ -257,6 +264,7 @@ module Net
       end
 
       def open_channel # cli_channel
+        before_open_channel_procs.each  { |_name, a_proc| a_proc.call }
         ::Timeout.timeout(open_channel_timeout, Error::OpenChannelTimeout) do
           net_ssh.open_channel do |new_channel|
             logger.debug 'channel is open'
@@ -278,12 +286,12 @@ module Net
           until channel do process end
         end
         logger.debug 'channel is ready, running callbacks now'
+        after_open_channel_procs.each  { |_name, a_proc| a_proc.call }
         process
       end
 
       def close_channel
-        return unless net_ssh
-        net_ssh.cleanup_channel(channel) if channel
+        net_ssh&.cleanup_channel(channel) if channel
         self.channel = nil
       end
 
