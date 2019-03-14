@@ -29,7 +29,7 @@ Or install it yourself as:
 
 ```ruby
 Net::SSH.start('host', 'user', password: "password") do |ssh|
-  cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m)
+  cli = ssh.cli(default_prompt: /(\nuser@host):/m)
   cli.cmd ""
   # => "Last login: \nuser@host:"
 
@@ -40,18 +40,18 @@ end
 
 ```ruby
   net_ssh = Net::SSH.start('host', 'user', password: "password")
-  cli = Net::SSH::CLI::Channel.new(net_ssh: net_ssh)
+  cli = Net::SSH::CLI::Session.new(net_ssh: net_ssh)
   cli.cmd ""
 ```
 
 ```ruby
-  cli = Net::SSH::CLI::Channel.new(net_ssh_options: {host: 'host', user: 'user', password: 'password'})
+  cli = Net::SSH::CLI::Session.new(net_ssh_options: {host: 'host', user: 'user', password: 'password'})
   cli.cmd ""
 ```
 
 ### #cmd
 ```ruby
-  cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m)
+  cli = ssh.cli(default_prompt: /(\nuser@host):/m)
   cli.cmd "echo 'bananas'"
   # => "echo 'bananas'\nbananas\nuser@host:"
   cli.cmd "echo 'bananas'", rm_command: true
@@ -64,7 +64,7 @@ end
 
 Remove the command and the prompt for #cmd & #dialog by default
 ```ruby
-  cli = ssh.open_cli_channel(default_prompt: /(\nuser@host):/m, cmd_rm_command: true, cmd_rm_prompt: true)
+  cli = ssh.cli(default_prompt: /(\nuser@host):/m, cmd_rm_command: true, cmd_rm_prompt: true)
   cli.cmd "echo 'bananas'"
   # => "bananas"
 ```
@@ -75,6 +75,8 @@ Remove the command and the prompt for #cmd & #dialog by default
   # => "echo 'are you sure?' && read -p 'yes|no>'\nyes|no>"
   cli.cmd "yes"
 ```
+
+## Configuration
 
 ## Development
 

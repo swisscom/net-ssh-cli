@@ -312,6 +312,8 @@ end
 class Net::SSH::Connection::Session
   attr_accessor :cli_channels
   def cli(**opts)
-    Net::SSH::CLI::Session.new({net_ssh: self}.merge(opts))
+    cli_session = Net::SSH::CLI::Session.new({net_ssh: self}.merge(opts))
+    cli_session.open_channel
+    cli_session
   end
 end
