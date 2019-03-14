@@ -142,7 +142,7 @@ module Net
 
       def detect_prompt(seconds: 5)
         process(seconds)
-        self.default_prompt = read[/.*\z/]
+        self.default_prompt = read[/\n?^.*\z/]
       end
 
       # prove a block where the default prompt changes
@@ -175,29 +175,23 @@ module Net
         read
       end
 
-      def dialog(command, prompt, pre_read: true, **opts)
-        if pre_read
-          pre_read_data = read
-          logger.debug { "#dialog ignoring pre-command output: #{pre_read_data.inspect}" } if pre_read_data.present?
-        end
-        write command
-        output = read_till(prompt: prompt, **opts)
-        rm_prompt!(output, prompt: prompt, **opts)
-        rm_command!(output, command, prompt: prompt, **opts)
-        output
+      def dialog(command, prompt, **opts)
+        opts = opts.clone.merge(prompt: prompt) 
+        cmd(command, opts)
       end
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
       # this should avoid many horrible state issues where the prompt is not the last prompt
       def cmd(command, pre_read: true, rm_prompt: cmd_rm_prompt, rm_command: cmd_rm_command, prompt: current_prompt, **opts)
+        opts = opts.clone.merge(pre_read: pre_read, rm_prompt: rm_prompt, rm_command: rm_command, prompt: prompt) 
         if pre_read
           pre_read_data = read
           logger.debug { "#cmd ignoring pre-command output: #{pre_read_data.inspect}" } if pre_read_data.present?
         end
         write_n command
-        output = read_till(**opts)
-        rm_prompt!(output, **opts)
-        rm_command!(output, command, **opts)
+        output = read_till(opts)
+        rm_prompt!(output, opts)
+        rm_command!(output, command, opts)
         output
       end
       alias command cmd
@@ -225,6 +219,7 @@ module Net
         @net_ssh&.host
       end
       alias hostname host
+      alias to_s host
 
       ## NET::SSH
       #
