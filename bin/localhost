@@ -7,9 +7,9 @@ require 'irb'
 
 begin
   $NET_SSH = Net::SSH.start("localhost")
-  $CLI = Net::SSH::CLI::Session.new(net_ssh: $NET_SSH)
+  $CLI = Net::SSH::CLI::Session.new(net_ssh: $NET_SSH, default_prompt: "@")
   $CLI.open_channel
-  $CLI.detect_prompt
+  puts "assuming your prompt contains '@'"
   puts $CLI.cmd "echo 'hello world'"
 rescue StandardError => error
   puts "#{error.class} #{error.message}"
@@ -21,10 +21,11 @@ ensure
   IRB.start(__FILE__)
 end
 
-# Try one of those
+## Try one of those
+# $CLI.cmd "echo 'hello world'"
 # $CLI.detect_prompt
 # $CLI.default_prompt
-# $CLI.cmd "echo 'hello world'"
 # $CLI.cmd "cat /etc/passwd"
 # $CLI.write "cat /etc/passwd"
 # $CLI.read
+# $CLI.cmd "echo 'hello world'"
