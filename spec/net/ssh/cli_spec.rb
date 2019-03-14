@@ -8,14 +8,15 @@ RSpec.describe Net::SSH::CLI do
   end
 
   describe 'initializes nicely' do
-    let(:cli) { Net::SSH::CLI::Channel.new }
+    let(:cli) { Net::SSH::CLI::Session.new }
     it { expect(cli.stdout).to eq('') }
-    it { expect(cli.stderr).to eq('') }
-    it { expect(Net::SSH::CLI::DEFAULT).to be_a(ActiveSupport::HashWithIndifferentAccess) }
-    it { expect(cli.default).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(Net::SSH::CLI::OPTIONS).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.net_ssh_options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
-    it { expect(cli.open_channel_options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.before_on_stdout_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.after_on_stdout_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.before_open_channel_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.after_open_channel_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.logger).to be_a(Logger) }
   end
 
@@ -23,7 +24,7 @@ RSpec.describe Net::SSH::CLI do
     let(:default_prompt) { 'the_prompt' }
     let(:channel) { double(Net::SSH::Connection::Channel) }
     let(:net_ssh) { double(Net::SSH) }
-    let(:cli) { Net::SSH::CLI::Channel.new(default_prompt: default_prompt, net_ssh: net_ssh) }
+    let(:cli) { Net::SSH::CLI::Session.new(default_prompt: default_prompt, net_ssh: net_ssh) }
     before(:each) { allow(cli).to receive(:open_channel) {} }
     before(:each) { allow(cli).to receive(:channel) { channel } }
     before(:each) { allow(cli).to receive(:process) { true } }
@@ -32,24 +33,12 @@ RSpec.describe Net::SSH::CLI do
 
     context 'configuration' do
       context '#options' do
-        let(:cli) { Net::SSH::CLI::Channel.new(default_prompt: default_prompt, net_ssh: net_ssh) }
+        let(:cli) { Net::SSH::CLI::Session.new(default_prompt: default_prompt, net_ssh: net_ssh) }
         it { expect(cli.options).to be_a(Hash) }
         it { expect(cli.options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
         it { expect(cli.options).to include(:process_time) }
         it { expect(cli.options!(banana: true)).to include(:banana) }
         it { expect(cli.options = {}).to eq({}) }
-      end
-      context '#default' do
-        it { expect(Net::SSH::CLI::DEFAULT).to include(:process_time) }
-        it { expect(Net::SSH::CLI::DEFAULT).to include(:default_prompt) }
-        it { expect(cli.default).to be_a(Hash) }
-        it { expect(cli.default).to be_a(ActiveSupport::HashWithIndifferentAccess) }
-        it { expect(cli.default).to include(:default_prompt) }
-        it { expect(cli.default!).to include(:default_prompt) }
-        it 'merges!' do
-          cli.default!(banana: true)
-          expect(cli.default).to include(:banana)
-        end
       end
     end
 
@@ -63,20 +52,17 @@ RSpec.describe Net::SSH::CLI do
       it '#to_s' do
         expect(cli.to_s).to eq('localhost')
       end
-      it '#ip' do
-        expect(cli.ip).to eq(nil)
-      end
     end
 
     context '#detect_prompt' do
       it 'detects the prompt' do
         cli.stdout << "welcome!\n\nasdf\n\nthe_prompt"
-        expect(cli.detect_prompt).to eq("\nthe_prompt")
+        expect(cli.detect_prompt(seconds: 0.1)).to eq("\nthe_prompt")
         expect(cli.default_prompt).to eq("\nthe_prompt")
       end
       it 'detects the strange prompt' do
         cli.stdout << "welcome!\n\nasdf\n\nthe_!@#U$:>\""
-        expect(cli.detect_prompt).to eq("\nthe_!@#U$:>\"")
+        expect(cli.detect_prompt(seconds: 0.1)).to eq("\nthe_!@#U$:>\"")
       end
     end
 
@@ -86,14 +72,6 @@ RSpec.describe Net::SSH::CLI do
           cli.stdout = 'asdf'
           expect(cli.stdout!).to eq('asdf')
           expect(cli.stdout).to eq('')
-        end
-      end
-
-      context '#stderr!' do
-        it 'returns the value and emptries it' do
-          cli.stderr = 'asdf'
-          expect(cli.stderr!).to eq('asdf')
-          expect(cli.stderr).to eq('')
         end
       end
 
@@ -121,23 +99,14 @@ RSpec.describe Net::SSH::CLI do
         end
       end
 
-      context '#process_stdout' do
+      context '#on_stdout' do
         it 'returns the value' do
           cli.stdout = 'qwer'
-          a_proc = proc {}
-          cli.process_stdout_procs = { one: a_proc }
-          expect(a_proc).to receive(:call)
-          expect(cli.process_stdout('asdf')).to eq('qwerasdf')
-        end
-      end
-
-      context '#process_stderr' do
-        it 'returns the value' do
-          cli.stderr = 'qwer'
-          a_proc = proc {}
-          cli.process_stderr_procs = { one: a_proc }
-          expect(a_proc).to receive(:call)
-          expect(cli.process_stderr('asdf', 0)).to eq('qwerasdf')
+          a_proc = Proc.new {}
+          cli.before_on_stdout_procs = { one: a_proc }
+          cli.after_on_stdout_procs = { one: a_proc }
+          expect(a_proc).to receive(:call).twice
+          expect(cli.on_stdout('asdf')).to eq('qwerasdf')
         end
       end
     end
@@ -200,9 +169,6 @@ RSpec.describe Net::SSH::CLI do
 
       context '#read_for' do
         it 'sends a command and waits for a prompt' do
-          allow(cli).to receive(:sleep) { true }
-          expect(cli).to receive(:read)
-          expect(cli).to receive(:sleep).with(5)
           expect(cli.read_for(seconds: 5)).to eq('the_prompt')
         end
       end
