@@ -76,7 +76,31 @@ Remove the command and the prompt for #cmd & #dialog by default
   cli.cmd "yes"
 ```
 
+### #read & #write
+```ruby
+  cli.write "echo 'hello'\n"
+  # => "echo 'hello'\n"
+  cli.read
+  # => "echo 'hello'\nhello\nuser@host:"
+```
+
 ## Configuration
+
+Have a deep look at ``Net::SSH::CLI::OPTIONS`` at ``lib/net/ssh/cli.rb``
+
+### Callbacks
+
+The following callbacks are available
+ - #before_open_channel
+ - #after_open_channel
+ - #before_on_data
+ - #before_on_data
+
+```ruby
+cli.before_open_channel do
+  puts "The channel will open soon"
+end
+```
 
 ## Development
 
