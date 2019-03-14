@@ -85,7 +85,7 @@ Remove the command and the prompt for #cmd & #dialog by default
   # => "echo 'hello'\nhello\nuser@host:"
 ```
 
-### #write-N
+### #write_n
 ```ruby
   cli.write_n "echo 'hello'"
   # => "echo 'hello'\n"
