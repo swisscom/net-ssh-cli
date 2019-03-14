@@ -57,12 +57,12 @@ RSpec.describe Net::SSH::CLI do
     context '#detect_prompt' do
       it 'detects the prompt' do
         cli.stdout << "welcome!\n\nasdf\n\nthe_prompt"
-        expect(cli.detect_prompt).to eq("\nthe_prompt")
+        expect(cli.detect_prompt(seconds: 0.1)).to eq("\nthe_prompt")
         expect(cli.default_prompt).to eq("\nthe_prompt")
       end
       it 'detects the strange prompt' do
         cli.stdout << "welcome!\n\nasdf\n\nthe_!@#U$:>\""
-        expect(cli.detect_prompt).to eq("\nthe_!@#U$:>\"")
+        expect(cli.detect_prompt(seconds: 0.1)).to eq("\nthe_!@#U$:>\"")
       end
     end
 

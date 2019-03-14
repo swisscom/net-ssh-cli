@@ -16,6 +16,7 @@ module Net
         class UndefinedMatch < Error; end
         class OpenChannelTimeout < Error; end
         class ReadTillTimeout < Error; end
+        class PromptDetection < Error; end
       end
 
       # Example
@@ -140,9 +141,16 @@ module Net
         end
       end
 
-      def detect_prompt(seconds: 5)
-        process(seconds)
+      def detect_prompt(seconds: 3)
+        write_n
+        future = Time.now + seconds
+        while future > Time.now
+          process
+          sleep 0.1
+        end
         self.default_prompt = read[/\n?^.*\z/]
+        raise Error::PromptDetection, "couldn't detect a prompt" unless default_prompt.present?
+        default_prompt
       end
 
       # prove a block where the default prompt changes
@@ -260,16 +268,15 @@ module Net
             new_channel.on_data do |_ch, data|
               on_stdout(data)
             end
-            #new_channel.on_extended_data do |_ch, type, data|
-            #end
-            #new_channel.on_close do
-            #end
+            #new_channel.on_extended_data do |_ch, type, data| end
+            #new_channel.on_close do end
           end
           until channel do process end
         end
         logger.debug 'channel is ready, running callbacks now'
         after_open_channel_procs.each  { |_name, a_proc| a_proc.call }
         process
+        self
       end
 
       def close_channel

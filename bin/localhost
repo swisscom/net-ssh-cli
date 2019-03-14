@@ -3,35 +3,28 @@
 
 require 'bundler/setup'
 require 'net/ssh/cli'
-
-# You can add fixtures and/or initialization code here to make experimenting
-# with your gem easier. You can also use a different console, if you like.
-
-# (If you use this, don't forget to add pry to your Gemfile!)
-# require "pry"
-# Pry.start
-
 require 'irb'
 
-def reload!
-  load __FILE__
-end
-
-$CLI = nil
 begin
-  $CLI = Net::SSH::CLI::Session.new(net_ssh_options: {host: 'localhost', user: ENV['USER']} , default_prompt: '@')
+  $NET_SSH = Net::SSH.start("localhost")
+  $CLI = Net::SSH::CLI::Session.new(net_ssh: $NET_SSH)
   $CLI.open_channel
-  puts "\nPUTS #{$CLI.read}"
-  sleep 0.3
-  puts "\nPUTS #{$CLI.read}"
-  puts "\nPUTS #{$CLI.write "\n"}"
-  puts "\nPUTS TILL #{$CLI.read_till}"
-  puts "try $CLI.cmd"
-  puts File.read(__FILE__)
+  $CLI.detect_prompt
+  puts $CLI.cmd "echo 'hello world'"
 rescue StandardError => error
-  puts error.class
-  puts error.message
+  puts "#{error.class} #{error.message}"
   puts error.backtrace
 ensure
+  puts ""
+  puts File.read(__FILE__).lines.map {|line| "[bin/localhost] " + line}
+  puts ""
   IRB.start(__FILE__)
 end
+
+# Try one of those
+# $CLI.detect_prompt
+# $CLI.default_prompt
+# $CLI.cmd "echo 'hello world'"
+# $CLI.cmd "cat /etc/passwd"
+# $CLI.write "cat /etc/passwd"
+# $CLI.read
