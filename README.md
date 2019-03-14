@@ -77,12 +77,30 @@ Remove the command and the prompt for #cmd & #dialog by default
 ```
 
 ### #read & #write
+
 ```ruby
   cli.write "echo 'hello'\n"
   # => "echo 'hello'\n"
   cli.read
   # => "echo 'hello'\nhello\nuser@host:"
 ```
+
+### #write-N
+```ruby
+  cli.write_n "echo 'hello'"
+  # => "echo 'hello'\n"
+```
+
+### #read_till
+keep on processing till the stdout matches to given|default prompt and then read the whole stdin.
+```ruby
+  cli.write "\n"
+  # => "echo 'hello'\n"
+  cli.read_till
+  # => "echo 'hello'\nhello\nuser@host:"
+```
+
+This method is used by #cmd
 
 ## Configuration
 
