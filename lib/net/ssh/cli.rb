@@ -100,9 +100,9 @@ module Net
       end
 
       def on_stdout(data)
-        before_on_stdout_procs.each { |_name, a_proc| a_proc.call }
+        before_on_stdout_procs.each { |_name, a_proc| self.instance_eval(&a_proc) }
         stdout << data
-        after_on_stdout_procs.each  { |_name, a_proc| a_proc.call }
+        after_on_stdout_procs.each  { |_name, a_proc| self.instance_eval(&a_proc) }
         process # if we receive data, we probably receive more - improves performance
         stdout
       end
@@ -254,7 +254,7 @@ module Net
       end
 
       def open_channel # cli_channel
-        before_open_channel_procs.each  { |_name, a_proc| a_proc.call }
+        before_open_channel_procs.each  { |_name, a_proc| self.instance_eval(&a_proc) }
         ::Timeout.timeout(open_channel_timeout, Error::OpenChannelTimeout) do
           net_ssh.open_channel do |new_channel|
             logger.debug 'channel is open'
@@ -274,7 +274,7 @@ module Net
           until channel do process end
         end
         logger.debug 'channel is ready, running callbacks now'
-        after_open_channel_procs.each  { |_name, a_proc| a_proc.call }
+        after_open_channel_procs.each  { |_name, a_proc| self.instance_eval(&a_proc) }
         process
         self
       end
