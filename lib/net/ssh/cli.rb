@@ -205,8 +205,8 @@ module Net
       alias command cmd
       alias exec cmd
 
-      def cmds(commands, **opts)
-        commands.map { |command| [command, cmd(command, **opts)] }
+      def cmds(*commands, **opts)
+        commands.flatten.map { |command| [command, cmd(command, **opts)] }
       end
       alias commands cmds
 
