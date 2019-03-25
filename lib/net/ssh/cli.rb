@@ -55,7 +55,7 @@ module Net
       def options
         @options ||= begin
           opts = OPTIONS.clone
-          opts.each do |key,value|
+          opts.each do |key, value|
             opts[key] = value.clone if value.is_a?(Hash)
           end
           opts
@@ -100,9 +100,9 @@ module Net
       end
 
       def on_stdout(data)
-        before_on_stdout_procs.each { |_name, a_proc| self.instance_eval(&a_proc) }
+        before_on_stdout_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         stdout << data
-        after_on_stdout_procs.each  { |_name, a_proc| self.instance_eval(&a_proc) }
+        after_on_stdout_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         process # if we receive data, we probably receive more - improves performance
         stdout
       end
@@ -150,6 +150,7 @@ module Net
         end
         self.default_prompt = read[/\n?^.*\z/]
         raise Error::PromptDetection, "couldn't detect a prompt" unless default_prompt.present?
+
         default_prompt
       end
 
@@ -184,14 +185,14 @@ module Net
       end
 
       def dialog(command, prompt, **opts)
-        opts = opts.clone.merge(prompt: prompt) 
+        opts = opts.clone.merge(prompt: prompt)
         cmd(command, opts)
       end
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
       # this should avoid many horrible state issues where the prompt is not the last prompt
       def cmd(command, pre_read: true, rm_prompt: cmd_rm_prompt, rm_command: cmd_rm_command, prompt: current_prompt, **opts)
-        opts = opts.clone.merge(pre_read: pre_read, rm_prompt: rm_prompt, rm_command: rm_command, prompt: prompt) 
+        opts = opts.clone.merge(pre_read: pre_read, rm_prompt: rm_prompt, rm_command: rm_command, prompt: prompt)
         if pre_read
           pre_read_data = read
           logger.debug { "#cmd ignoring pre-command output: #{pre_read_data.inspect}" } if pre_read_data.present?
@@ -236,7 +237,7 @@ module Net
         return @net_ssh if @net_ssh
 
         logger.debug { 'Net:SSH #start' }
-        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host] || "localhost", net_ssh_options[:user] || ENV['USER'], formatted_net_ssh_options)
+        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host] || 'localhost', net_ssh_options[:user] || ENV['USER'], formatted_net_ssh_options)
       rescue StandardError => error
         self.net_ssh = nil
         raise
@@ -244,7 +245,7 @@ module Net
       alias proxy net_ssh
 
       # have a deep look at the source of Net::SSH
-      # session#process https://github.com/net-ssh/net-ssh/blob/dd13dd44d68b7fa82d4ca9a3bbe18e30c855f1d2/lib/net/ssh/connection/session.rb#L227 
+      # session#process https://github.com/net-ssh/net-ssh/blob/dd13dd44d68b7fa82d4ca9a3bbe18e30c855f1d2/lib/net/ssh/connection/session.rb#L227
       # session#loop    https://github.com/net-ssh/net-ssh/blob/dd13dd44d68b7fa82d4ca9a3bbe18e30c855f1d2/lib/net/ssh/connection/session.rb#L179
       # because the (cli) channel stays open, we always need to ensure that the ssh layer gets "processed" further. This can be done inside here automatically or outside in a separate event loop for the net_ssh connection.
       def process(time = process_time)
@@ -254,7 +255,7 @@ module Net
       end
 
       def open_channel # cli_channel
-        before_open_channel_procs.each  { |_name, a_proc| self.instance_eval(&a_proc) }
+        before_open_channel_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         ::Timeout.timeout(open_channel_timeout, Error::OpenChannelTimeout) do
           net_ssh.open_channel do |new_channel|
             logger.debug 'channel is open'
@@ -268,13 +269,13 @@ module Net
             new_channel.on_data do |_ch, data|
               on_stdout(data)
             end
-            #new_channel.on_extended_data do |_ch, type, data| end
-            #new_channel.on_close do end
+            # new_channel.on_extended_data do |_ch, type, data| end
+            # new_channel.on_close do end
           end
           until channel do process end
         end
         logger.debug 'channel is ready, running callbacks now'
-        after_open_channel_procs.each  { |_name, a_proc| self.instance_eval(&a_proc) }
+        after_open_channel_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         process
         self
       end
@@ -284,7 +285,7 @@ module Net
         self.channel = nil
       end
 
-      private 
+      private
 
       def with_prompts
         @with_prompts ||= []
@@ -312,7 +313,7 @@ end
 class Net::SSH::Connection::Session
   attr_accessor :cli_channels
   def cli(**opts)
-    cli_session = Net::SSH::CLI::Session.new({net_ssh: self}.merge(opts))
+    cli_session = Net::SSH::CLI::Session.new({ net_ssh: self }.merge(opts))
     cli_session.open_channel
     cli_session
   end
