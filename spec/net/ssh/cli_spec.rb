@@ -100,13 +100,10 @@ RSpec.describe Net::SSH::CLI do
       end
 
       context '#on_stdout' do
+        let(:cli) { Net::SSH::CLI::Session.new(default_prompt: default_prompt, net_ssh: net_ssh, after_on_stdout_procs: {one: Proc.new {stdout.gsub!("as", "df")}}) }
         it 'returns the value' do
           cli.stdout = 'qwer'
-          a_proc = Proc.new {}
-          cli.before_on_stdout_procs = { one: a_proc }
-          cli.after_on_stdout_procs = { one: a_proc }
-          expect(a_proc).to receive(:call).twice
-          expect(cli.on_stdout('asdf')).to eq('qwerasdf')
+          expect(cli.on_stdout('asdf')).to eq('qwerdfdf')
         end
       end
     end
