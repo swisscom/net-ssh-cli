@@ -32,9 +32,10 @@ module Net
         options.merge!(opts)
         self.net_ssh = options.delete(:net_ssh)
         self.logger = options.delete(:logger) || Logger.new(STDOUT, level: Logger::WARN)
+        @new_data = String.new
       end
 
-      attr_accessor :channel, :stdout, :net_ssh, :logger
+      attr_accessor :channel, :stdout, :net_ssh, :logger, :data
 
       OPTIONS = ActiveSupport::HashWithIndifferentAccess.new(
         default_prompt:            /\n?^(\S+@.*)\z/,                             # the default prompt to search for
@@ -99,9 +100,10 @@ module Net
         var
       end
 
-      def on_stdout(data)
+      def on_stdout(new_data)
+        self.new_data = new_data
         before_on_stdout_procs.each { |_name, a_proc| instance_eval(&a_proc) }
-        stdout << data
+        stdout << new_data
         after_on_stdout_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         process # if we receive data, we probably receive more - improves performance
         stdout
