@@ -35,7 +35,7 @@ module Net
         @new_data = String.new
       end
 
-      attr_accessor :channel, :stdout, :net_ssh, :logger, :data
+      attr_accessor :channel, :stdout, :net_ssh, :logger, :new_data
 
       OPTIONS = ActiveSupport::HashWithIndifferentAccess.new(
         default_prompt:            /\n?^(\S+@.*)\z/,                             # the default prompt to search for
