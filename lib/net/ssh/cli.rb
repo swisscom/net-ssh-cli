@@ -41,6 +41,7 @@ module Net
         default_prompt:            /\n?^(\S+@.*)\z/,                             # the default prompt to search for
         cmd_rm_prompt:             false,                                        # whether the prompt should be removed in the output of #cmd
         cmd_rm_command:            false,                                        # whether the given command should be removed in the output of #cmd
+        run_impact:                false,                                        # whether to run #impact commands. This might align with testing|development|production. example #impact("reboot")
         read_till_timeout:         nil,                                          # timeout for #read_till to find the match
         named_prompts:             ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
         before_on_stdout_procs:    ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection 
@@ -224,6 +225,22 @@ module Net
             prompt.is_a?(Regexp) ? output[prompt, 1] = '' : output[prompt] = ''
           end
         end
+      end
+
+      # the same as #cmd but it will only run the command if the option run_impact is set to true.
+      # this can be used for commands which you might not want to run in development|testing mode but in production
+      # cli.impact("reboot") 
+      # => "skip: reboot"
+      # cli.run_impact = true
+      # cli.impact("reboot") 
+      # => "system is going to reboot NOW"
+      def impact(command, **opts)
+        run_impact? ? cmd(command, **opts) : "skip: #{command.inspect}"
+      end
+
+      # same as #cmds but for #impact instead of #cmd
+      def impacts(*commands, **opts)
+        commands.flatten.map { |command| [command, impact(command, **opts)] }
       end
 
       def host

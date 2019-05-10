@@ -163,6 +163,22 @@ RSpec.describe Net::SSH::CLI do
           expect(cli.dialog('command', /(the_dialog_prompt)/, rm_cmd: true, rm_prompt: true)).to eq("output\n")
         end
       end
+    
+      context '#impact' do
+        before { allow(cli).to receive(:cmd) { "command\nthe_prompt" } }
+        
+        it 'doesn\'t a command if impact is false' do
+          cli.run_impact = false
+          expect(cli).not_to receive(:cmd)
+          expect(cli.impact("_reboot_")).to match(/skip/)
+        end
+        it 'sends a command if impact is true' do
+          cli.run_impact = true
+          expect(cli).to receive(:cmd)
+          cli.impact("_reboot_")
+        end
+
+      end
 
       context '#read_for' do
         it 'sends a command and waits for a prompt' do
