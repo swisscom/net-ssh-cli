@@ -123,7 +123,7 @@ This method is used by #cmd
 
 ## Configuration
 
-Have a deep look at ``Net::SSH::CLI::OPTIONS`` at ``lib/net/ssh/cli.rb``
+Have a deep look at the various Options configured by ``Net::SSH::CLI::OPTIONS`` in ``lib/net/ssh/cli.rb``
 
 ### Callbacks
 
