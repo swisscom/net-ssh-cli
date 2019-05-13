@@ -69,6 +69,15 @@ Remove the command and the prompt for #cmd & #dialog by default
   # => "bananas"
 ```
 
+### #cmds
+
+It's the same as #cmd but for multiple commands.
+
+```ruby
+  cli.cmds ["echo 'bananas'", "echo 'apples'"], rm_command: true, rm_prompt: true
+  # => ["bananas", "apples"]
+```
+
 ### #dialog
 ```ruby
   cli.dialog "echo 'are you sure?' && read -p 'yes|no>'", /\nyes|no>/
@@ -113,17 +122,28 @@ For example in testing.
 ### #read_till
 keep on processing till the stdout matches to given|default prompt and then read the whole stdin.
 ```ruby
-  cli.write "\n"
+  cli.write "echo 'hello'\n"
   # => "echo 'hello'\n"
   cli.read_till
   # => "echo 'hello'\nhello\nuser@host:"
 ```
 
-This method is used by #cmd
+This method is used by #cmd, see ``lib/net/ssh/cli.rb#cmd``
+
+### #read_for
+
+```ruby
+  cli.write_n "sleep 180"
+  # => ""
+  cli.read_for(seconds: 181)
+  # => "..."
+```
 
 ## Configuration
 
 Have a deep look at the various Options configured by ``Net::SSH::CLI::OPTIONS`` in ``lib/net/ssh/cli.rb``
+Nearly everything can be configured.
+
 
 ### Callbacks
 
