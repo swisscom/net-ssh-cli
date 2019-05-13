@@ -76,6 +76,25 @@ Remove the command and the prompt for #cmd & #dialog by default
   cli.cmd "yes"
 ```
 
+### #impact
+
+The very same as `#cmd` but it respects a flag whether to run commands with 'impact'.
+This can be used in a setup where you don't want to run certain commands under certain conditions.
+For example in testing. 
+
+```ruby
+  cli.run_impact?
+  # => false
+  cli.impact "reboot now"
+  # => "skip: 'reboot now'"
+```
+
+```ruby
+  cli.run_impact = true
+  cli.impact "reboot now"
+  # => connection closed
+```
+
 ### #read & #write
 
 ```ruby
@@ -117,6 +136,13 @@ The following callbacks are available
 ```ruby
 cli.before_open_channel do
   puts "The channel will open soon"
+end
+```
+
+```ruby
+cli.after_open_channel do
+  cmd "logger 'Net::SSH::CLI works'"
+  cmd "sudo -i"
 end
 ```
 
