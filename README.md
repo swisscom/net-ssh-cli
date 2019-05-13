@@ -166,6 +166,29 @@ cli.after_open_channel do
 end
 ```
 
+### #hostname #host #to_s
+
+```ruby
+  cli.to_s
+  # => "localhost"
+  cli.hostname
+  # => "localhost"
+  cli.host
+  # => "localhost"
+```
+
+### #detect_prompt
+
+NET::SSH::CLI can try to guess the prompt by waiting for it and using the last line.
+This works usually, but is not guaranteed to work well.
+
+```ruby
+  cli.open_channel
+  # => ...
+  cli.detect_prompt(seconds: 3)
+  # => "[my prompt]"
+```
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
