@@ -32,10 +32,11 @@ module Net
         options.merge!(opts)
         self.net_ssh = options.delete(:net_ssh)
         self.logger = options.delete(:logger) || Logger.new(STDOUT, level: Logger::WARN)
+        self.process_count = 0
         @new_data = String.new
       end
 
-      attr_accessor :channel, :stdout, :net_ssh, :logger, :new_data
+      attr_accessor :channel, :stdout, :net_ssh, :logger, :new_data, :process_count
 
       OPTIONS = ActiveSupport::HashWithIndifferentAccess.new(
         default_prompt:            /\n?^(\S+@.*)\z/,                             # the default prompt to search for
@@ -106,7 +107,9 @@ module Net
         before_on_stdout_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         stdout << new_data
         after_on_stdout_procs.each { |_name, a_proc| instance_eval(&a_proc) }
-        process # if we receive data, we probably receive more - improves performance
+        self.process_count += 1
+        process unless process_count > 100 # if we receive data, we probably receive more - improves performance - but on a lot of data, this leads to a stack level too deep
+        self.process_count -= 1
         stdout
       end
 
