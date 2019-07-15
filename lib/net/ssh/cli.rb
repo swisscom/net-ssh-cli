@@ -174,11 +174,15 @@ module Net
       def read_till(prompt: current_prompt, timeout: read_till_timeout, **_opts)
         raise Error::UndefinedMatch, 'no prompt given or default_prompt defined' unless prompt
 
-        ::Timeout.timeout(timeout + 0.5, Error::ReadTillTimeout) do
+        hard_timeout = timeout
+        hard_timeout += 0.5 if timeout
+        ::Timeout.timeout(hard_timeout, Error::ReadTillTimeout) do
           with_prompt(prompt) do
-            soft_timeout = Time.now + timeout 
+            soft_timeout = Time.now + timeout if timeout
             until stdout[current_prompt] do
-              raise Error::ReadTillTimeout, "Timeout after #{timeout}s, #{current_prompt.inspect} never matched #{stdout.inspect}" if soft_timeout < Time.now
+              if timeout and soft_timeout < Time.now
+                raise Error::ReadTillTimeout, "Timeout after #{timeout}s, #{current_prompt.inspect} never matched #{stdout.inspect}"
+              end
               process
               sleep 0.1
             end
