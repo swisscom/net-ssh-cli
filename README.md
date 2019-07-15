@@ -79,10 +79,20 @@ It's the same as #cmd but for multiple commands.
 ```
 
 ### #dialog
+
+Use this method to specify a differnt 'prompt' for once. This is perfect for interactive commands. 
+
 ```ruby
   cli.dialog "echo 'are you sure?' && read -p 'yes|no>'", /\nyes|no>/
   # => "echo 'are you sure?' && read -p 'yes|no>'\nyes|no>"
   cli.cmd "yes"
+```
+
+```ruby
+cli.dialog "passwd", /Current Password:/i
+cli.dialog "Old Password", /New Password:/i
+cli.dialog "New Password", /Repeat Password:/i
+cli.cmd "New Password"
 ```
 
 ### #impact
@@ -148,10 +158,10 @@ Nearly everything can be configured.
 ### Callbacks
 
 The following callbacks are available
- - #before_open_channel
- - #after_open_channel
- - #before_on_data
- - #before_on_data
+ - before_open_channel
+ - after_open_channel
+ - before_on_stdout
+ - after_on_stdout
 
 ```ruby
 cli.before_open_channel do
@@ -163,6 +173,20 @@ end
 cli.after_open_channel do
   cmd "logger 'Net::SSH::CLI works'"
   cmd "sudo -i"
+end
+```
+
+Using the callbacks you can define a debugger which shows the `stdout` buffer content each time new data is received.
+
+```ruby
+cli.after_on_stdout do
+  warn stdout
+end
+```
+
+```ruby
+cli.after_on_stdout do
+  stdout.gsub!("\r\n", "\n")
 end
 ```
 
