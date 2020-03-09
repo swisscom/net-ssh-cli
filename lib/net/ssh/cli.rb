@@ -176,12 +176,12 @@ module Net
 
         hard_timeout = timeout
         hard_timeout += 0.5 if timeout
-        ::Timeout.timeout(hard_timeout, Error::ReadTillTimeout) do
+        ::Timeout.timeout(hard_timeout, Error::ReadTillTimeout, "#{current_prompt.inspect} didn't match on #{stdout.inspect} within #{timeout}s") do
           with_prompt(prompt) do
             soft_timeout = Time.now + timeout if timeout
             until stdout[current_prompt] do
               if timeout and soft_timeout < Time.now
-                raise Error::ReadTillTimeout, "Timeout after #{timeout}s, #{current_prompt.inspect} never matched #{stdout.inspect}"
+                raise Error::ReadTillTimeout, "#{current_prompt.inspect} didn't match on #{stdout.inspect} within #{timeout}s"
               end
               process
               sleep 0.1
