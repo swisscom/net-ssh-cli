@@ -116,6 +116,8 @@ RSpec.describe Net::SSH::CLI do
           expect(cli.read_till).to eq('the_prompt')
         end
         it 'has a timeout' do
+          cli.stdout = 'you never find me'
+          expect {cli.read_till(timeout: 0.01)}.to raise_error(Net::SSH::CLI::Error::ReadTillTimeout)
         end
       end
 
