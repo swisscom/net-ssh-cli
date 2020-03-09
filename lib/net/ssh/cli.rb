@@ -198,7 +198,7 @@ module Net
 
       def dialog(command, prompt, **opts)
         opts = opts.clone.merge(prompt: prompt)
-        cmd(command, opts)
+        cmd(command, **opts)
       end
 
       # 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
@@ -210,9 +210,9 @@ module Net
           logger.debug { "#cmd ignoring pre-command output: #{pre_read_data.inspect}" } if pre_read_data.present?
         end
         write_n command
-        output = read_till(opts)
-        rm_prompt!(output, opts)
-        rm_command!(output, command, opts)
+        output = read_till(**opts)
+        rm_prompt!(output, **opts)
+        rm_command!(output, command, **opts)
         output
       end
       alias command cmd
@@ -224,11 +224,11 @@ module Net
       alias commands cmds
 
       def rm_command!(output, command, **opts)
-        output[command + "\n"] = '' if rm_command?(opts) && output[command + "\n"]
+        output[command + "\n"] = '' if rm_command?(**opts) && output[command + "\n"]
       end
 
       def rm_prompt!(output, **opts)
-        if rm_prompt?(opts)
+        if rm_prompt?(**opts)
           prompt = opts[:prompt] || current_prompt
           if output[prompt]
             prompt.is_a?(Regexp) ? output[prompt, 1] = '' : output[prompt] = ''
