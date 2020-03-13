@@ -144,6 +144,10 @@ RSpec.describe Net::SSH::CLI do
         it 'deletes the cmd and the prompt' do
           expect(cli.cmd('command', rm_cmd: true, rm_prompt: true)).to eq("output\n")
         end
+        it 'reraises ReadTillTimeout errors to a friendlier Error' do
+          allow(cli).to receive(:read_till) { raise Net::SSH::CLI::Error::ReadTillTimeout, "SOMETHING DID NOT MATCH" }
+          expect{cli.cmd('fail me')}.to raise_error(Net::SSH::CLI::Error::CMD, /SOMETHING DID NOT MATCH after cmd "fail me" was sent/)
+        end
       end
 
       context '#cmds' do

@@ -17,6 +17,7 @@ module Net
         class OpenChannelTimeout < Error; end
         class ReadTillTimeout < Error; end
         class PromptDetection < Error; end
+        class CMD < Error; end
       end
 
       # Example
@@ -214,6 +215,8 @@ module Net
         rm_prompt!(output, **opts)
         rm_command!(output, command, **opts)
         output
+      rescue Error::ReadTillTimeout => error
+        raise Error::CMD, "#{error.message} after cmd #{command.inspect} was sent"
       end
       alias command cmd
       alias exec cmd
