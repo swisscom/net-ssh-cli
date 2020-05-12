@@ -120,7 +120,7 @@ module Net
         stdout
       end
 
-      def write(content = String.new)
+      def stdin(content = String.new)
         logger.debug { "#write #{content.inspect}" }
         before_on_stdin_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         channel.send_data content
@@ -128,7 +128,7 @@ module Net
         after_on_stdin_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         content
       end
-      alias stdin write
+      alias write stdin
 
       def write_n(content = String.new)
         write content + "\n"
