@@ -46,6 +46,8 @@ module Net
         run_impact:                false,                                        # whether to run #impact commands. This might align with testing|development|production. example #impact("reboot")
         read_till_timeout:         nil,                                          # timeout for #read_till to find the match
         named_prompts:             ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
+        before_cmd_procs:          ActiveSupport::HashWithIndifferentAccess.new, # procs to call before #cmd 
+        after_cmd_procs:           ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  #cmd
         before_on_stdout_procs:    ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection 
         after_on_stdout_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data arrives from the underlying connection
         before_on_stdin_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data is sent to the underlying channel 
@@ -214,10 +216,12 @@ module Net
           pre_read_data = read
           logger.debug { "#cmd ignoring pre-command output: #{pre_read_data.inspect}" } if pre_read_data.present?
         end
+        before_cmd_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         write_n command
         output = read_till(**opts)
         rm_prompt!(output, **opts)
         rm_command!(output, command, **opts)
+        after_cmd_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         output
       rescue Error::ReadTillTimeout => error
         raise Error::CMD, "#{error.message} after cmd #{command.inspect} was sent"
