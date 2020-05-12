@@ -206,7 +206,7 @@ module Net
                 raise Error::ReadTillTimeout, "#{current_prompt.inspect} didn't match on #{stdout.inspect} within #{timeout}s"
               end
               process
-              sleep 0.1
+              sleep 0.01 # don't race for CPU
             end
           end
         end
