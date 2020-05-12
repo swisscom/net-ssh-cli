@@ -146,6 +146,16 @@ module Net
         with_prompts[-1] || default_prompt
       end
 
+      # run something with a different named prompt
+      #
+      # named_prompts["root"] = /(?<prompt>\nroot)\z/
+      #
+      # with_named_prompt("root") do
+      #   cmd("sudo -i")
+      #   cmd("cat /etc/passwd")
+      # end
+      # cmd("exit")
+      #
       def with_named_prompt(name)
         raise Error::UndefinedMatch, "unknown named_prompt #{name}" unless named_prompts[name]
 
@@ -154,20 +164,25 @@ module Net
         end
       end
 
+      # tries to detect the prompt
+      # sends a "\n", waits for a X seconds, and uses the last line as prompt
+      # this won't work reliable if the prompt changes during the session
       def detect_prompt(seconds: 3)
         write_n
-        future = Time.now + seconds
-        while future > Time.now
-          process
-          sleep 0.1
-        end
+        process(seconds)
         self.default_prompt = read[/\n?^.*\z/]
         raise Error::PromptDetection, "couldn't detect a prompt" unless default_prompt.present?
 
         default_prompt
       end
 
-      # prove a block where the default prompt changes
+      # run something with a different prompt
+      #
+      # with_prompt(/(?<prompt>\nroot)\z/) do
+      #   cmd("sudo -i")
+      #   cmd("cat /etc/passwd")
+      # end
+      # cmd("exit")
       def with_prompt(prompt)
         logger.debug { "#with_prompt: #{current_prompt.inspect} => #{prompt.inspect}" }
         with_prompts << prompt
