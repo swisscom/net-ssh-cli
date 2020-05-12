@@ -58,6 +58,7 @@ module Net
         net_ssh_options:           ActiveSupport::HashWithIndifferentAccess.new, # a wrapper for options to pass to Net::SSH.start in case net_ssh is undefined
         process_time:              0.00001,                                      # how long #process is processing net_ssh#process or sleeping (waiting for something)
         background_processing:     false,                                        # default false, whether the process method maps to the underlying net_ssh#process or the net_ssh#process happens in a separate loop
+        on_stdout_processing:      100,                                          # whether to optimize the on_stdout performance by calling #process #optimize_on_stdout-times in case more data arrives
         sleep_procs:               ActiveSupport::HashWithIndifferentAccess.new, # procs to call instead of Kernel.sleep(), perfect for async hooks
       )
 
@@ -113,9 +114,7 @@ module Net
         before_on_stdout_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         stdout << new_data
         after_on_stdout_procs.each { |_name, a_proc| instance_eval(&a_proc) }
-        self.process_count += 1
-        process unless process_count > 100 # if we receive data, we probably receive more - improves performance - but on a lot of data, this leads to a stack level too deep
-        self.process_count -= 1
+        optimise_stdout_processing
         stdout
       end
 
@@ -369,6 +368,17 @@ module Net
 
       def rm_command?(**opts)
         opts[:rm_cmd].nil? ? cmd_rm_command : opts[:rm_cmd]
+      end
+
+      # when new data is beeing received, likely more data will arrive - this improves the performance by a large factor
+      # but on a lot of data, this leads to a stack level too deep
+      # therefore it is limited to max #on_stdout_processing
+      # the bigger on_stdout_processing, the closer we get to a stack level too deep
+      def optimise_stdout_processing
+        self.process_count += 1
+        process unless process_count > on_stdout_processing
+      ensure
+        self.process_count -= 1
       end
     end
   end
