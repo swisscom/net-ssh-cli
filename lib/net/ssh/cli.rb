@@ -201,7 +201,7 @@ module Net
         ::Timeout.timeout(hard_timeout, Error::ReadTillTimeout, "#{current_prompt.inspect} didn't match on #{stdout.inspect} within #{timeout}s") do
           with_prompt(prompt) do
             soft_timeout = Time.now + timeout if timeout
-            until stdout[current_prompt] do
+            until prompt_in_stdout? do
               if timeout and soft_timeout < Time.now
                 raise Error::ReadTillTimeout, "#{current_prompt.inspect} didn't match on #{stdout.inspect} within #{timeout}s"
               end
@@ -211,6 +211,17 @@ module Net
           end
         end
         read
+      end
+
+      def prompt_in_stdout?
+        case current_prompt
+        when Regexp
+          !!stdout[current_prompt]
+        when String
+          stdout.include?(current_prompt)
+        else
+          raise Net::SSH::CLI::Error, "prompt/current_prompt is not a String/Regex #{current_prompt.inspect}"
+        end
       end
 
       def read_for(seconds:)
