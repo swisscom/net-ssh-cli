@@ -264,11 +264,26 @@ module Net
         output[command + "\n"] = '' if rm_command?(**opts) && output[command + "\n"]
       end
 
-      def rm_prompt!(output, **opts)
+      # removes the prompt from the given output
+      # prompt should contain a named match 'prompt' /(?<prompt>.*something.*)\z/
+      # for backwards compatibility it also tries to replace the first match of the prompt /(something)\z/
+      # it removes the whole match if no matches are given /something\z/ 
+      def rm_prompt!(output, prompt: current_prompt, **opts)
         if rm_prompt?(**opts)
-          prompt = opts[:prompt] || current_prompt
           if output[prompt]
-            prompt.is_a?(Regexp) ? output[prompt, 1] = '' : output[prompt] = ''
+            case prompt
+            when String then output[prompt] = ''
+            when Regexp
+              if prompt.names.include?("prompt")
+                output[prompt, "prompt"] = ''
+              else
+                begin
+                  output[prompt, 1] = ''
+                rescue IndexError
+                  output[prompt] = ''
+                end
+              end
+            end
           end
         end
       end
