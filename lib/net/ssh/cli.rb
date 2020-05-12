@@ -45,6 +45,8 @@ module Net
         cmd_rm_command:            false,                                        # whether the given command should be removed in the output of #cmd
         run_impact:                false,                                        # whether to run #impact commands. This might align with testing|development|production. example #impact("reboot")
         read_till_timeout:         nil,                                          # timeout for #read_till to find the match
+        read_till_hard_timeout:    nil,                                          # hard timeout for #read_till to find the match using Timeout.timeout(hard_timeout) {}. Might creates unpredicted sideffects
+        read_till_hard_timeout_factor: 1.2,                                      # hard timeout factor in case read_till_hard_timeout is true
         named_prompts:             ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
         before_cmd_procs:          ActiveSupport::HashWithIndifferentAccess.new, # procs to call before #cmd 
         after_cmd_procs:           ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  #cmd
@@ -193,13 +195,24 @@ module Net
         logger.debug { "#with_prompt: => #{current_prompt.inspect}" }
       end
 
-      def read_till(prompt: current_prompt, timeout: read_till_timeout, **_opts)
+      # continues to process the ssh connection till #stdout matches the given prompt.
+      # might raise a timeout error if a soft/hard timeout is given
+      # be carefull when using the hard_timeout, this is using the dangerous Timeout.timeout
+      # this gets really slow on large outputs, since the prompt will be searched in the whole output. Use \z in the regex if possible
+      #
+      # Optional named arguments:
+      #  - prompt: expected to be a regex
+      #  - timeout: nil or a number
+      #  - hard_timeout: nil, true, or a number
+      #  - hard_timeout_factor: nil, true, or a number
+      #  -   when hard_timeout == true, this will set the hard_timeout as (read_till_hard_timeout_factor * read_till_timeout), defaults to 1.2 = +20%
+      def read_till(prompt: current_prompt, timeout: read_till_timeout, hard_timeout: read_till_hard_timeout, hard_timeout_factor: read_till_hard_timeout_factor, **_opts)
         raise Error::UndefinedMatch, 'no prompt given or default_prompt defined' unless prompt
+        hard_timeout = (read_till_hard_timeout_factor * timeout) if timeout and hard_timeout == true
+        hard_timeout = nil if hard_timeout == true
 
-        hard_timeout = timeout
-        hard_timeout += 0.5 if timeout
-        ::Timeout.timeout(hard_timeout, Error::ReadTillTimeout, "#{current_prompt.inspect} didn't match on #{stdout.inspect} within #{timeout}s") do
-          with_prompt(prompt) do
+        with_prompt(prompt) do
+          ::Timeout.timeout(hard_timeout, Error::ReadTillTimeout, "#{current_prompt.inspect} didn't match on #{stdout.inspect} within #{hard_timeout}s") do
             soft_timeout = Time.now + timeout if timeout
             until prompt_in_stdout? do
               if timeout and soft_timeout < Time.now
