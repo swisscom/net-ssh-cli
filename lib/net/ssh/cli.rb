@@ -135,7 +135,7 @@ module Net
       def read
         process
         var = stdout!
-        logger.debug("#read: \n#{var}")
+        logger.debug { "#read: \n#{var}" }
         var
       end
 
