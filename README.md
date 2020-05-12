@@ -162,6 +162,8 @@ The following callbacks are available
  - after_open_channel
  - before_on_stdout
  - after_on_stdout
+ - before_on_stdin
+ - after_on_stdin
 
 ```ruby
 cli.before_open_channel do
@@ -186,7 +188,28 @@ end
 
 ```ruby
 cli.after_on_stdout do
+  puts "the following new data arrived on stdout #{new_data.inspect} from #{hostname}"
+end
+```
+
+or convert new lines between different OS
+```ruby
+cli.after_on_stdout do
   stdout.gsub!("\r\n", "\n")
+end
+```
+
+or hide passwords
+```ruby
+cli.after_on_stdout do
+  stdout.gsub!(/password:\S+/, "<HIDDEN>")
+end
+```
+
+or change the stdin before sending it
+```ruby
+cli.before_on_stdin do
+  content.gsub("\n\n", "\n")
 end
 ```
 
