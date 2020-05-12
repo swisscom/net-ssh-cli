@@ -13,10 +13,14 @@ RSpec.describe Net::SSH::CLI do
     it { expect(Net::SSH::CLI::OPTIONS).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.net_ssh_options).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.before_on_stdin_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.after_on_stdin_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.before_on_stdout_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.after_on_stdout_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.before_open_channel_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.after_open_channel_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.before_cmd_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
+    it { expect(cli.after_cmd_procs).to be_a(ActiveSupport::HashWithIndifferentAccess) }
     it { expect(cli.logger).to be_a(Logger) }
   end
 
