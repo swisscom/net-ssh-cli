@@ -58,6 +58,7 @@ module Net
         net_ssh_options:           ActiveSupport::HashWithIndifferentAccess.new, # a wrapper for options to pass to Net::SSH.start in case net_ssh is undefined
         process_time:              0.00001,                                      # how long #process is processing net_ssh#process or sleeping (waiting for something)
         background_processing:     false,                                        # default false, whether the process method maps to the underlying net_ssh#process or the net_ssh#process happens in a separate loop
+        sleep_procs:               ActiveSupport::HashWithIndifferentAccess.new, # procs to call instead of Kernel.sleep(), perfect for async hooks
       )
 
       def options
@@ -283,6 +284,19 @@ module Net
       end
       alias hostname host
       alias to_s host
+
+      # if #sleep_procs are set, they will be called instead of Kernel.sleep
+      # great for async
+      # .sleep_procs["async"] = proc do |duration| async_reactor.sleep(duration) end
+      #
+      # cli.sleep(1)
+      def sleep(duration)
+        if sleep_procs.any?
+          sleep_procs.each { |_name, a_proc| instance_exec(duration, &a_proc) }
+        else
+          Kernel.sleep(duration)
+        end
+      end
 
       ## NET::SSH
       #
