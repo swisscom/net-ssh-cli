@@ -48,6 +48,8 @@ module Net
         named_prompts:             ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
         before_on_stdout_procs:    ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection 
         after_on_stdout_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data arrives from the underlying connection
+        before_on_stdin_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data is sent to the underlying channel 
+        after_on_stdin_procs:      ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data is sent to the underlying channel
         before_open_channel_procs: ActiveSupport::HashWithIndifferentAccess.new, # procs to call before opening a channel 
         after_open_channel_procs:  ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  opening a channel, for example you could call #detect_prompt or #read_till
         open_channel_timeout:      nil,                                          # timeout to open the channel
@@ -116,8 +118,10 @@ module Net
 
       def write(content = String.new)
         logger.debug { "#write #{content.inspect}" }
+        before_on_stdin_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         channel.send_data content
         process
+        after_on_stdin_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         content
       end
       alias stdin write
