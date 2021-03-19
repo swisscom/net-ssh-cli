@@ -60,6 +60,8 @@ end
   # => "echo 'bananas'\nbananas"
   cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true
   # => "bananas"
+  cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true, timeout: 60
+  # => "bananas"
 ```
 
 Remove the command and the prompt for #cmd & #dialog by default
@@ -69,9 +71,23 @@ Remove the command and the prompt for #cmd & #dialog by default
   # => "bananas"
 ```
 
+You can define a timeout for a `#cmd` in order to avoid hanging commands. The timeout gets passed into the underlying function #read_till.
+This is usefull in case your prompt won't match because of an unexpected behaviour or undefined behaviour. For example some form of unexpected dialog. 
+The underlying implementation is using a soft timeout because `Timeout.timeout` is dangerous. In order to deal anyway with hanging low level issues, `Timeout.timeout` is used too, but with a higher value than the soft timeout.
+
+```ruby
+  cli = ssh.cli(default_prompt: /(\nuser@host):/m, read_till_timeout: 11)
+  cli.cmd "echo 'bananas'"                      # timeout is set to 11
+  # => "bananas"
+  cli.cmd "echo 'bananas'", timeout: 22         # timeout is set to 22
+  # => "bananas"
+  cli.cmd "sleep 33", timeout: 22               # timeout is set to 22
+  # Net::SSH::CLI::Error::CMD
+```
+
 ### #cmds
 
-It's the same as #cmd but for multiple commands.
+It's the same as `#cmd` but for multiple commands.
 
 ```ruby
   cli.cmds ["echo 'bananas'", "echo 'apples'"], rm_command: true, rm_prompt: true
