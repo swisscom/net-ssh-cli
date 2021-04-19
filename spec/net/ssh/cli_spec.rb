@@ -157,6 +157,10 @@ RSpec.describe Net::SSH::CLI do
           allow(cli).to receive(:read_till) { raise Net::SSH::CLI::Error::ReadTillTimeout, "SOMETHING DID NOT MATCH" }
           expect{cli.cmd('fail me')}.to raise_error(Net::SSH::CLI::Error::CMD, /SOMETHING DID NOT MATCH after cmd "fail me" was sent/)
         end
+        it 'sleeps a given minimum_duration of seconds' do
+          expect(cli).to receive(:sleep).with(0.123)
+          cli.cmd("command", minimum_duration: 0.123)
+        end
       end
 
       context '#cmds' do

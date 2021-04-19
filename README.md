@@ -60,6 +60,10 @@ end
   # => "echo 'bananas'\nbananas"
   cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true
   # => "bananas"
+  cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true, minimum_duration: 9
+  # => "bananas"
+  cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true, minimum_duration: 9, prompt: /\nuser@host:/m
+  # => "bananas"
 ```
 
 Remove the command and the prompt for #cmd & #dialog by default

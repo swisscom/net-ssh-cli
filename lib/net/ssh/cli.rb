@@ -44,6 +44,7 @@ module Net
         cmd_rm_prompt:             false,                                        # whether the prompt should be removed in the output of #cmd
         cmd_rm_command:            false,                                        # whether the given command should be removed in the output of #cmd
         cmd_rm_command_tail:       "\n",                                         # which format does the end of line return after a command has been submitted. Could be something like "ls\n" "ls\r\n" or "ls \n" (extra spaces)
+        cmd_minimum_duration:      0,                                            # how long do you want to wait/sleep after sending the command. After this waiting time, the output will be processed and the prompt will be searched. 
         run_impact:                false,                                        # whether to run #impact commands. This might align with testing|development|production. example #impact("reboot")
         read_till_timeout:         nil,                                          # timeout for #read_till to find the match
         read_till_hard_timeout:    nil,                                          # hard timeout for #read_till to find the match using Timeout.timeout(hard_timeout) {}. Might creates unpredicted sideffects
@@ -255,7 +256,7 @@ module Net
       # 4. returns the output of your command
       # Hint: 'read' first on purpose as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
       #       this should avoid many horrible state issues where the prompt is not the last prompt
-      def cmd(command, pre_read: true, rm_prompt: cmd_rm_prompt, rm_command: cmd_rm_command, prompt: current_prompt, **opts)
+      def cmd(command, pre_read: true, rm_prompt: cmd_rm_prompt, rm_command: cmd_rm_command, prompt: current_prompt, minimum_duration: cmd_minimum_duration, **opts)
         opts = opts.clone.merge(pre_read: pre_read, rm_prompt: rm_prompt, rm_command: rm_command, prompt: prompt)
         if pre_read
           pre_read_data = read
@@ -263,6 +264,7 @@ module Net
         end
         before_cmd_procs.each { |_name, a_proc| instance_eval(&a_proc) }
         write_n command
+        sleep(minimum_duration)
         output = read_till(**opts)
         rm_prompt!(output, **opts)
         rm_command!(output, command, **opts)
