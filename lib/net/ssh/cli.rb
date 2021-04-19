@@ -40,7 +40,7 @@ module Net
       attr_accessor :channel, :stdout, :net_ssh, :logger, :new_data, :process_count
 
       OPTIONS = ActiveSupport::HashWithIndifferentAccess.new(
-        default_prompt:            /\n?^(\S+@.*)\z/,                             # the default prompt to search for
+        default_prompt:            /\n?^(\S+@.*)\z/,                             # the default prompt to search for. It is recommended to use \z to ensure you don't match the prompt too early.
         cmd_rm_prompt:             false,                                        # whether the prompt should be removed in the output of #cmd
         cmd_rm_command:            false,                                        # whether the given command should be removed in the output of #cmd
         cmd_rm_command_tail:       "\n",                                         # which format does the end of line return after a command has been submitted. Could be something like "ls\n" "ls\r\n" or "ls \n" (extra spaces)
