@@ -62,7 +62,9 @@ end
   # => "bananas"
   cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true, minimum_duration: 9
   # => "bananas"
-  cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true, minimum_duration: 9, prompt: /\nuser@host:/m
+  cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true, prompt: /\nuser@host:/m
+  # => "bananas"
+  cli.cmd "echo 'bananas'", rm_command: true, rm_prompt: true, timeout: 60
   # => "bananas"
 ```
 
@@ -73,9 +75,23 @@ Remove the command and the prompt for #cmd & #dialog by default
   # => "bananas"
 ```
 
+You can define a timeout for a `#cmd` in order to avoid hanging commands. The timeout gets passed into the underlying function #read_till.
+This is usefull in case your prompt won't match because of an unexpected behaviour or undefined behaviour. For example some form of unexpected dialog. 
+The underlying implementation is using a soft timeout because `Timeout.timeout` is dangerous. In order to deal anyway with hanging low level issues, `Timeout.timeout` is used too, but with a higher value than the soft timeout.
+
+```ruby
+  cli = ssh.cli(default_prompt: /(\nuser@host):/m, read_till_timeout: 11)
+  cli.cmd "echo 'bananas'"                      # timeout is set to 11
+  # => "bananas"
+  cli.cmd "echo 'bananas'", timeout: 22         # timeout is set to 22
+  # => "bananas"
+  cli.cmd "sleep 33", timeout: 22               # timeout is set to 22
+  # Net::SSH::CLI::Error::CMD
+```
+
 ### #cmds
 
-It's the same as #cmd but for multiple commands.
+It's the same as `#cmd` but for multiple commands.
 
 ```ruby
   cli.cmds ["echo 'bananas'", "echo 'apples'"], rm_command: true, rm_prompt: true
@@ -238,6 +254,38 @@ This works usually, but is not guaranteed to work well.
   # => ...
   cli.detect_prompt(seconds: 3)
   # => "[my prompt]"
+```
+
+### An outdated view of all available Options
+
+Please check the file `lib/net/ssh/cli.rb` `OPTIONS` in order to get an up-to-date view of all available options, flags and arguments.
+
+```ruby
+      OPTIONS = ActiveSupport::HashWithIndifferentAccess.new(
+        default_prompt:            /\n?^(\S+@.*)\z/,                             # the default prompt to search for
+        cmd_rm_prompt:             false,                                        # whether the prompt should be removed in the output of #cmd
+        cmd_rm_command:            false,                                        # whether the given command should be removed in the output of #cmd
+        cmd_rm_command_tail:       "\n",                                         # which format does the end of line return after a command has been submitted. Could be something like "ls\n" "ls\r\n" or "ls \n" (extra spaces)
+        run_impact:                false,                                        # whether to run #impact commands. This might align with testing|development|production. example #impact("reboot")
+        read_till_timeout:         nil,                                          # timeout for #read_till to find the match
+        read_till_hard_timeout:    nil,                                          # hard timeout for #read_till to find the match using Timeout.timeout(hard_timeout) {}. Might creates unpredicted sideffects
+        read_till_hard_timeout_factor: 1.2,                                      # hard timeout factor in case read_till_hard_timeout is true
+        named_prompts:             ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
+        before_cmd_procs:          ActiveSupport::HashWithIndifferentAccess.new, # procs to call before #cmd 
+        after_cmd_procs:           ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  #cmd
+        before_on_stdout_procs:    ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection 
+        after_on_stdout_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data arrives from the underlying connection
+        before_on_stdin_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data is sent to the underlying channel 
+        after_on_stdin_procs:      ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data is sent to the underlying channel
+        before_open_channel_procs: ActiveSupport::HashWithIndifferentAccess.new, # procs to call before opening a channel 
+        after_open_channel_procs:  ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  opening a channel, for example you could call #detect_prompt or #read_till
+        open_channel_timeout:      nil,                                          # timeout to open the channel
+        net_ssh_options:           ActiveSupport::HashWithIndifferentAccess.new, # a wrapper for options to pass to Net::SSH.start in case net_ssh is undefined
+        process_time:              0.00001,                                      # how long #process is processing net_ssh#process or sleeping (waiting for something)
+        background_processing:     false,                                        # default false, whether the process method maps to the underlying net_ssh#process or the net_ssh#process happens in a separate loop
+        on_stdout_processing:      100,                                          # whether to optimize the on_stdout performance by calling #process #optimize_on_stdout-times in case more data arrives
+        sleep_procs:               ActiveSupport::HashWithIndifferentAccess.new, # procs to call instead of Kernel.sleep(), perfect for async hooks
+      )
 ```
 
 ## Development
