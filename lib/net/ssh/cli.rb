@@ -253,7 +253,7 @@ module Net
       # 2. continues to process the ssh connection until the prompt is found in the stdout
       # 3. prepares the output using your callbacks
       # 4. returns the output of your command
-      # Hint: 'read' first on purpuse as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
+      # Hint: 'read' first on purpose as a feature. once you cmd you ignore what happend before. otherwise use read|write directly.
       #       this should avoid many horrible state issues where the prompt is not the last prompt
       def cmd(command, pre_read: true, rm_prompt: cmd_rm_prompt, rm_command: cmd_rm_command, prompt: current_prompt, **opts)
         opts = opts.clone.merge(pre_read: pre_read, rm_prompt: rm_prompt, rm_command: rm_command, prompt: prompt)
