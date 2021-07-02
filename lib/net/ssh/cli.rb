@@ -99,7 +99,9 @@ module Net
 
       OPTIONS.keys.select {|key| key.to_s.include? "procs"}.each do |name|
         define_method name.sub("_procs","") do |&blk|
-          self.send(name)[SecureRandom.uuid] = Proc.new {blk.call}
+          id = SecureRandom.uuid
+          self.send(name)[id] = Proc.new {blk.call}
+          id
         end
       end
 
