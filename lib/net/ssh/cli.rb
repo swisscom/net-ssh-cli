@@ -64,6 +64,12 @@ module Net
         background_processing:     false,                                        # default false, whether the process method maps to the underlying net_ssh#process or the net_ssh#process happens in a separate loop
         on_stdout_processing:      100,                                          # whether to optimize the on_stdout performance by calling #process #optimize_on_stdout-times in case more data arrives
         sleep_procs:               ActiveSupport::HashWithIndifferentAccess.new, # procs to call instead of Kernel.sleep(), perfect for async hooks
+        terminal_chars_width:      320,                                          # Sets and sends the terminal dimensions during the opening of the channel. It does not send a channel_request on change.
+        terminal_chars_height:     120,                                          # See also https://github.com/net-ssh/net-ssh/blob/master/lib/net/ssh/connection/channel.rb#L220 section 'def request_pty'
+        terminal_pixels_width:     1920,                                         # See also https://www.ietf.org/rfc/rfc4254.txt section pty-req and section window-change
+        terminal_pixels_height:    1080,                                         #
+        terminal_term:             nil,                                          # Sets the terminal term, usually xterm
+        terminal_modes:            nil,                                          #
       )
 
       def options
@@ -377,7 +383,7 @@ module Net
           net_ssh.open_channel do |new_channel|
             logger.debug 'channel is open'
             self.channel = new_channel
-            new_channel.request_pty do |_ch, success|
+            new_channel.request_pty(terminal_options) do |_ch, success|
               raise Error::Pty, "#{host || ip} Failed to open ssh pty" unless success
             end
             new_channel.send_channel_request('shell') do |_ch, success|
@@ -429,6 +435,17 @@ module Net
         process unless process_count > on_stdout_processing
       ensure
         self.process_count -= 1
+      end
+
+      def terminal_options
+        {
+          term: terminal_term,
+          chars_wide: terminal_chars_width,
+          chars_high: terminal_chars_height,
+          pixels_wide: terminal_pixels_width,
+          pixels_high: terminal_pixels_height,
+          modes: terminal_modes
+        }.reject {|k,v| v.nil?}
       end
     end
   end
