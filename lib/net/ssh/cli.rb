@@ -44,19 +44,19 @@ module Net
         cmd_rm_prompt:             false,                                        # whether the prompt should be removed in the output of #cmd
         cmd_rm_command:            false,                                        # whether the given command should be removed in the output of #cmd
         cmd_rm_command_tail:       "\n",                                         # which format does the end of line return after a command has been submitted. Could be something like "ls\n" "ls\r\n" or "ls \n" (extra spaces)
-        cmd_minimum_duration:      0,                                            # how long do you want to wait/sleep after sending the command. After this waiting time, the output will be processed and the prompt will be searched. 
+        cmd_minimum_duration:      0,                                            # how long do you want to wait/sleep after sending the command. After this waiting time, the output will be processed and the prompt will be searched.
         run_impact:                false,                                        # whether to run #impact commands. This might align with testing|development|production. example #impact("reboot")
         read_till_timeout:         nil,                                          # timeout for #read_till to find the match
         read_till_hard_timeout:    nil,                                          # hard timeout for #read_till to find the match using Timeout.timeout(hard_timeout) {}. Might creates unpredicted sideffects
         read_till_hard_timeout_factor: 1.2,                                      # hard timeout factor in case read_till_hard_timeout is true
-        named_prompts:             ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {} 
-        before_cmd_procs:          ActiveSupport::HashWithIndifferentAccess.new, # procs to call before #cmd 
+        named_prompts:             ActiveSupport::HashWithIndifferentAccess.new, # you can used named prompts for #with_prompt {}
+        before_cmd_procs:          ActiveSupport::HashWithIndifferentAccess.new, # procs to call before #cmd
         after_cmd_procs:           ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  #cmd
-        before_on_stdout_procs:    ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection 
+        before_on_stdout_procs:    ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data arrives from the underlying connection
         after_on_stdout_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data arrives from the underlying connection
-        before_on_stdin_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data is sent to the underlying channel 
+        before_on_stdin_procs:     ActiveSupport::HashWithIndifferentAccess.new, # procs to call before data is sent to the underlying channel
         after_on_stdin_procs:      ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  data is sent to the underlying channel
-        before_open_channel_procs: ActiveSupport::HashWithIndifferentAccess.new, # procs to call before opening a channel 
+        before_open_channel_procs: ActiveSupport::HashWithIndifferentAccess.new, # procs to call before opening a channel
         after_open_channel_procs:  ActiveSupport::HashWithIndifferentAccess.new, # procs to call after  opening a channel, for example you could call #detect_prompt or #read_till
         open_channel_timeout:      nil,                                          # timeout to open the channel
         net_ssh_options:           ActiveSupport::HashWithIndifferentAccess.new, # a wrapper for options to pass to Net::SSH.start in case net_ssh is undefined
@@ -297,7 +297,7 @@ module Net
       # removes the prompt from the given output
       # prompt should contain a named match 'prompt' /(?<prompt>.*something.*)\z/
       # for backwards compatibility it also tries to replace the first match of the prompt /(something)\z/
-      # it removes the whole match if no matches are given /something\z/ 
+      # it removes the whole match if no matches are given /something\z/
       def rm_prompt!(output, prompt: current_prompt, **opts)
         if rm_prompt?(**opts)
           if output[prompt]
@@ -320,10 +320,10 @@ module Net
 
       # the same as #cmd but it will only run the command if the option run_impact is set to true.
       # this can be used for commands which you might not want to run in development|testing mode but in production
-      # cli.impact("reboot") 
+      # cli.impact("reboot")
       # => "skip: reboot"
       # cli.run_impact = true
-      # cli.impact("reboot") 
+      # cli.impact("reboot")
       # => "system is going to reboot NOW"
       def impact(command, **opts)
         run_impact? ? cmd(command, **opts) : "skip: #{command.inspect}"
