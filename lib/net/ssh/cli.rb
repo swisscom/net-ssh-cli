@@ -360,7 +360,7 @@ module Net
         return @net_ssh if @net_ssh
 
         logger.debug { 'Net:SSH #start' }
-        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host] || 'localhost', net_ssh_options[:user] || ENV['USER'], formatted_net_ssh_options)
+        self.net_ssh = Net::SSH.start(net_ssh_options[:ip] || net_ssh_options[:host] || 'localhost', net_ssh_options[:user] || ENV['USER'], **formatted_net_ssh_options)
       rescue StandardError => error
         self.net_ssh = nil
         raise
